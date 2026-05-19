@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>インタラクティブアート — 画像差分法</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: monospace; }
+
+    #main-canvas { display: block; }
+
+    /* Setup screen */
+    #setup-screen {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #000; z-index: 100;
+    }
+    #setup-screen.hidden { display: none; }
+    .setup-box {
+      background: #111; border: 1px solid #444; border-radius: 8px;
+      padding: 32px; width: 420px; color: #eee;
+    }
+    .setup-box h1 { font-size: 18px; margin-bottom: 24px; color: #fff; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; color: #aaa; margin-bottom: 6px; }
+    select, input[type=range] { width: 100%; }
+    select {
+      background: #222; color: #eee; border: 1px solid #555;
+      padding: 8px; border-radius: 4px; font-size: 13px;
+    }
+    input[type=range] { accent-color: #6af; cursor: pointer; }
+    .range-row { display: flex; align-items: center; gap: 12px; }
+    .range-row input { flex: 1; }
+    .range-val { width: 36px; text-align: right; font-size: 13px; color: #6af; }
+    .btn-start {
+      width: 100%; padding: 12px; margin-top: 8px;
+      background: #6af; color: #000; border: none; border-radius: 4px;
+      font-size: 15px; font-weight: bold; cursor: pointer;
+    }
+    .btn-start:hover { background: #8bf; }
+    .error-msg { color: #f66; font-size: 12px; margin-top: 8px; display: none; }
+
+    /* HUD overlay */
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0;
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 12px 16px; pointer-events: none;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%);
+      transition: opacity 0.5s;
+    }
+    #hud.faded { opacity: 0; }
+    .hud-left { color: #fff; font-size: 12px; line-height: 1.8; }
+    .hud-right { display: flex; gap: 8px; pointer-events: all; }
+    .hud-btn {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 4px;
+      padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: monospace;
+    }
+    .hud-btn:hover { background: rgba(255,255,255,0.3); }
+
+    /* Threshold slider overlay */
+    #threshold-panel {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.7); border: 1px solid #444; border-radius: 8px;
+      padding: 12px 20px; color: #eee; font-size: 12px; width: 300px;
+      transition: opacity 0.5s;
+    }
+    #threshold-panel.hidden { opacity: 0; pointer-events: none; }
+    .thr-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+    .thr-row input { flex: 1; accent-color: #6af; }
+    .thr-val { width: 30px; text-align: right; color: #6af; }
+
+    /* Mode badge */
+    #mode-badge {
+      position: fixed; bottom: 20px; right: 20px;
+      background: rgba(0,0,0,0.6); color: #6af;
+      border: 1px solid #6af; border-radius: 4px;
+      padding: 6px 14px; font-size: 13px; font-family: monospace;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+    #mode-badge.faded { opacity: 0; }
+
+    /* Motion indicator dot */
+    #motion-dot {
+      position: fixed; top: 14px; right: 160px;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #444; transition: background 0.1s;
+      pointer-events: none;
+    }
+    #motion-dot.active { background: #6f6; }
+  </style>
+</head>
+<body>
+
+<!-- Setup Screen -->
+<div id="setup-screen">
+  <div class="setup-box">
+    <h1>インタラクティブアート 設定</h1>
+
+    <div class="form-group">
+      <label>カメラ選択（Camo Studio を選択）</label>
+      <select id="camera-select"><option value="">読み込み中...</option></select>
+      <button id="btn-retry-camera" style="margin-top:6px;background:#333;color:#aaa;border:1px solid #555;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;">再取得</button>
+    </div>
+
+    <div class="form-group">
+      <label>感度（差分閾値） — 低いほど敏感</label>
+      <div class="range-row">
+        <input type="range" id="threshold-init" min="5" max="100" value="25">
+        <span class="range-val" id="threshold-init-val">25</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>モード切替間隔（秒）</label>
+      <div class="range-row">
+        <input type="range" id="mode-interval" min="10" max="180" value="60" step="10">
+        <span class="range-val" id="mode-interval-val">60</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>音を有効にする</label>
+      <select id="sound-enabled">
+        <option value="1">有効</option>
+        <option value="0">無効</option>
+      </select>
+    </div>
+
+    <button class="btn-start" id="btn-start">開始</button>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+</div>
+
+<!-- Main Canvas -->
+<canvas id="main-canvas"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-left">
+    <div id="hud-fps">FPS: --</div>
+    <div id="hud-motion">動体: --px</div>
+  </div>
+  <div class="hud-right">
+    <button class="hud-btn" id="btn-threshold">閾値調整</button>
+    <button class="hud-btn" id="btn-fullscreen">全画面</button>
+    <button class="hud-btn" id="btn-setup">設定に戻る</button>
+  </div>
+</div>
+
+<div id="mode-badge">Mode 1 — 円（正弦波）</div>
+<div id="motion-dot"></div>
+
+<!-- Threshold panel -->
+<div id="threshold-panel" class="hidden">
+  <div>差分閾値（感度調整）</div>
+  <div class="thr-row">
+    <input type="range" id="threshold-slider" min="5" max="100" value="25">
+    <span class="thr-val" id="threshold-val">25</span>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  Interactive Art — 画像差分法によるインタラクティブアート
+//  論文「Webデザインの技術によるインタラクティブアートの可能性」
+//  ActionScript 3.0 → JavaScript + Canvas + Web Audio API
+// ============================================================
+
+const canvas = document.getElementById('main-canvas');
+const ctx = canvas.getContext('2d');
+
+// Hidden canvas for frame differencing
+const diffCanvas = document.createElement('canvas');
+const diffCtx = diffCanvas.getContext('2d', { willReadFrequently: true });
+
+const video = document.createElement('video');
+video.autoplay = true;
+video.playsInline = true;
+
+// State
+let W = 0, H = 0;
+let prevImageData = null;
+let threshold = 25;
+let currentMode = 0;
+let modeInterval = 60000;
+let soundEnabled = true;
+let audioCtx = null;
+let lastSoundTime = 0;
+let frameCount = 0;
+let lastFpsTime = performance.now();
+let fps = 0;
+let motionPixelCount = 0;
+let hudVisible = true;
+let hudTimeout = null;
+let thresholdPanelVisible = false;
+
+// Mode 2 shared color (resets on mode switch)
+let mode2Color = null;
+
+const MODE_LABELS = [
+  'Mode 1 — 円（正弦波）',
+  'Mode 2 — 均一円（のこぎり波）',
+  'Mode 3 — 曲線（矩形波）',
+];
+const WAVE_TYPES = ['sine', 'sawtooth', 'square'];
+
+// ---- Setup Screen ----
+
+const setupScreen = document.getElementById('setup-screen');
+const cameraSelect = document.getElementById('camera-select');
+const thresholdInit = document.getElementById('threshold-init');
+const thresholdInitVal = document.getElementById('threshold-init-val');
+const modeIntervalInput = document.getElementById('mode-interval');
+const modeIntervalVal = document.getElementById('mode-interval-val');
+const soundEnabledInput = document.getElementById('sound-enabled');
+const btnStart = document.getElementById('btn-start');
+const errorMsg = document.getElementById('error-msg');
+
+async function populateCameras() {
+  if (!navigator.mediaDevices) {
+    cameraSelect.innerHTML = '<option value="">mediaDevices 未対応 — HTTPSかlocalhostで開いてください</option>';
+    showError('このブラウザ/URLではカメラAPIが使えません。Chromeでファイルを開き直すか localhost 経由で開いてください。');
+    return;
+  }
+
+  // Step1: ラベルなしで一覧取得（許可不要）
+  let devices = await navigator.mediaDevices.enumerateDevices();
+  let videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+  // Step2: 許可を取得してラベルを取得
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop());
+    devices = await navigator.mediaDevices.enumerateDevices();
+    videoDevices = devices.filter(d => d.kind === 'videoinput');
+  } catch (e) {
+    // 許可拒否でもIDだけで続行
+    showError('カメラ許可が得られませんでした（ラベルなしで表示）: ' + e.message);
+  }
+
+  cameraSelect.innerHTML = '';
+  if (videoDevices.length === 0) {
+    cameraSelect.innerHTML = '<option value="">カメラが見つかりません</option>';
+    return;
+  }
+
+  videoDevices.forEach((d, i) => {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    const label = d.label || `カメラ ${i + 1}`;
+    opt.textContent = label;
+    if (label.toLowerCase().includes('camo')) opt.selected = true;
+    cameraSelect.appendChild(opt);
+  });
+}
+
+document.getElementById('btn-retry-camera').addEventListener('click', () => {
+  errorMsg.style.display = 'none';
+  cameraSelect.innerHTML = '<option value="">読み込み中...</option>';
+  populateCameras();
+});
+
+thresholdInit.addEventListener('input', () => {
+  thresholdInitVal.textContent = thresholdInit.value;
+});
+modeIntervalInput.addEventListener('input', () => {
+  modeIntervalVal.textContent = modeIntervalInput.value;
+});
+
+populateCameras();
+
+btnStart.addEventListener('click', async () => {
+  threshold = parseInt(thresholdInit.value);
+  modeInterval = parseInt(modeIntervalInput.value) * 1000;
+  soundEnabled = soundEnabledInput.value === '1';
+
+  const deviceId = cameraSelect.value;
+  if (!deviceId) { showError('カメラを選択してください'); return; }
+
+  btnStart.disabled = true;
+  btnStart.textContent = '接続中...';
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = stream;
+    await new Promise(resolve => { video.onloadedmetadata = resolve; });
+    await video.play();
+
+    setupScreen.classList.add('hidden');
+    initArt();
+  } catch (e) {
+    showError('カメラ接続失敗: ' + e.message);
+    btnStart.disabled = false;
+    btnStart.textContent = '開始';
+  }
+});
+
+function showError(msg) {
+  errorMsg.textContent = msg;
+  errorMsg.style.display = 'block';
+}
+
+// ---- Audio ----
+
+function initAudioContext() {
+  if (!audioCtx) audioCtx = new AudioContext();
+}
+
+function playNote(y, waveType) {
+  if (!soundEnabled || !audioCtx) return;
+  const now = audioCtx.currentTime;
+  const minFreq = 80, maxFreq = 1200;
+  // Top of screen = high pitch, bottom = low pitch
+  const freq = maxFreq - (y / H) * (maxFreq - minFreq);
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = waveType;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.06, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+  osc.start(now);
+  osc.stop(now + 0.25);
+}
+
+// ---- Canvas / Resize ----
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  diffCanvas.width = W;
+  diffCanvas.height = H;
+  prevImageData = null; // reset diff on resize
+}
+window.addEventListener('resize', resize);
+
+// ---- Mode cycling ----
+
+let modeTimer = null;
+function startModeTimer() {
+  if (modeTimer) clearInterval(modeTimer);
+  modeTimer = setInterval(switchMode, modeInterval);
+}
+
+function switchMode() {
+  currentMode = (currentMode + 1) % 3;
+  mode2Color = null;
+  updateModeBadge();
+}
+
+function updateModeBadge() {
+  const badge = document.getElementById('mode-badge');
+  badge.textContent = MODE_LABELS[currentMode];
+  badge.style.opacity = '1';
+  badge.classList.remove('faded');
+  setTimeout(() => badge.classList.add('faded'), 4000);
+}
+
+// ---- HUD auto-hide ----
+
+function showHud() {
+  hudVisible = true;
+  document.getElementById('hud').classList.remove('faded');
+  clearTimeout(hudTimeout);
+  hudTimeout = setTimeout(() => {
+    document.getElementById('hud').classList.add('faded');
+    document.getElementById('mode-badge').classList.add('faded');
+  }, 4000);
+}
+document.addEventListener('mousemove', showHud);
+document.addEventListener('click', showHud);
+
+// ---- HUD buttons ----
+
+document.getElementById('btn-fullscreen').addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+});
+
+document.getElementById('btn-setup').addEventListener('click', () => {
+  // Pause and go back to setup
+  if (modeTimer) clearInterval(modeTimer);
+  setupScreen.classList.remove('hidden');
+  ctx.clearRect(0, 0, W, H);
+  populateCameras();
+});
+
+document.getElementById('btn-threshold').addEventListener('click', () => {
+  thresholdPanelVisible = !thresholdPanelVisible;
+  const panel = document.getElementById('threshold-panel');
+  if (thresholdPanelVisible) {
+    panel.classList.remove('hidden');
+    document.getElementById('threshold-slider').value = threshold;
+    document.getElementById('threshold-val').textContent = threshold;
+  } else {
+    panel.classList.add('hidden');
+  }
+});
+
+document.getElementById('threshold-slider').addEventListener('input', (e) => {
+  threshold = parseInt(e.target.value);
+  document.getElementById('threshold-val').textContent = threshold;
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'f' || e.key === 'F') document.getElementById('btn-fullscreen').click();
+  if (e.key === 'm' || e.key === 'M') switchMode();
+  if (e.key === 't' || e.key === 'T') document.getElementById('btn-threshold').click();
+  if (e.key === 's' || e.key === 'S') { soundEnabled = !soundEnabled; }
+  if (e.key === 'Escape' && thresholdPanelVisible) {
+    thresholdPanelVisible = false;
+    document.getElementById('threshold-panel').classList.add('hidden');
+  }
+});
+
+// ---- Frame Differencing ----
+
+function detectMotion() {
+  if (video.readyState < 2) return [];
+
+  // Draw current frame to diff canvas (mirrored for natural interaction)
+  diffCtx.save();
+  diffCtx.translate(W, 0);
+  diffCtx.scale(-1, 1);
+  diffCtx.drawImage(video, 0, 0, W, H);
+  diffCtx.restore();
+
+  const current = diffCtx.getImageData(0, 0, W, H);
+  const motionPoints = [];
+
+  if (prevImageData) {
+    const cur = current.data;
+    const prv = prevImageData.data;
+    // Sample on a grid for performance (every 6px)
+    const step = 6;
+    for (let y = 0; y < H; y += step) {
+      for (let x = 0; x < W; x += step) {
+        const idx = (y * W + x) * 4;
+        const dr = Math.abs(cur[idx]     - prv[idx]);
+        const dg = Math.abs(cur[idx + 1] - prv[idx + 1]);
+        const db = Math.abs(cur[idx + 2] - prv[idx + 2]);
+        const diff = (dr + dg + db) / 3;
+        if (diff > threshold) {
+          motionPoints.push({ x, y, mag: diff / 255 });
+        }
+      }
+    }
+  }
+
+  prevImageData = current;
+  return motionPoints;
+}
+
+// ---- Drawing modes ----
+
+function hslStr(h, s, l, a) {
+  return `hsla(${h|0},${s}%,${l}%,${a})`;
+}
+
+function randomHue() { return Math.random() * 360; }
+
+function drawMode1(points) {
+  // ランダムなサイズのカラフルな円（論文：シンサカエ・ナイト・ミュージアム）
+  for (const pt of points) {
+    const r = 4 + Math.random() * 28;
+    const h = randomHue();
+    ctx.fillStyle = hslStr(h, 100, 60, 0.75);
+    ctx.beginPath();
+    ctx.arc(
+      pt.x + (Math.random() - 0.5) * 16,
+      pt.y + (Math.random() - 0.5) * 16,
+      r, 0, Math.PI * 2
+    );
+    ctx.fill();
+  }
+}
+
+function drawMode2(points) {
+  // 均一サイズ・同色の円（論文：均一なサイズで同じ色で円が発生）
+  if (!mode2Color) mode2Color = hslStr(randomHue(), 90, 65, 0.8);
+  const r = 8;
+  ctx.fillStyle = mode2Color;
+  for (const pt of points) {
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawMode3(points) {
+  // ランダムな曲線（論文：ランダムな曲線が発生）
+  for (const pt of points) {
+    const h = randomHue();
+    ctx.strokeStyle = hslStr(h, 100, 65, 0.65);
+    ctx.lineWidth = 1 + Math.random() * 2.5;
+    const spread = 80 + Math.random() * 80;
+    ctx.beginPath();
+    ctx.moveTo(pt.x, pt.y);
+    ctx.bezierCurveTo(
+      pt.x + (Math.random() - 0.5) * spread,
+      pt.y + (Math.random() - 0.5) * spread,
+      pt.x + (Math.random() - 0.5) * spread,
+      pt.y + (Math.random() - 0.5) * spread,
+      pt.x + (Math.random() - 0.5) * spread * 1.5,
+      pt.y + (Math.random() - 0.5) * spread * 1.5
+    );
+    ctx.stroke();
+  }
+}
+
+// ---- Main loop ----
+
+function sample(points, maxDraw) {
+  if (points.length <= maxDraw) return points;
+  const result = [];
+  const step = points.length / maxDraw;
+  for (let i = 0; i < maxDraw; i++) {
+    result.push(points[(i * step | 0)]);
+  }
+  return result;
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+
+  const motionPoints = detectMotion();
+  motionPixelCount = motionPoints.length;
+
+  // Fade the canvas — gradually dim previous frames (徐々に消えていく効果)
+  ctx.fillStyle = 'rgba(0,0,0,0.06)';
+  ctx.fillRect(0, 0, W, H);
+
+  if (motionPoints.length > 0) {
+    const draw = sample(motionPoints, 120);
+
+    switch (currentMode) {
+      case 0: drawMode1(draw); break;
+      case 1: drawMode2(draw); break;
+      case 2: drawMode3(draw); break;
+    }
+
+    // Sound: trigger occasionally, pitch = vertical position
+    const now = performance.now();
+    if (soundEnabled && now - lastSoundTime > 80 && Math.random() < 0.4) {
+      const pt = draw[Math.floor(Math.random() * draw.length)];
+      if (audioCtx && audioCtx.state === 'running') {
+        playNote(pt.y, WAVE_TYPES[currentMode]);
+      }
+      lastSoundTime = now;
+    }
+  }
+
+  // Motion indicator
+  document.getElementById('motion-dot').classList.toggle('active', motionPoints.length > 5);
+
+  // FPS counter
+  frameCount++;
+  const now2 = performance.now();
+  if (now2 - lastFpsTime > 1000) {
+    fps = (frameCount * 1000 / (now2 - lastFpsTime)) | 0;
+    frameCount = 0;
+    lastFpsTime = now2;
+    document.getElementById('hud-fps').textContent = `FPS: ${fps}`;
+    document.getElementById('hud-motion').textContent = `動体: ${motionPixelCount}px`;
+  }
+}
+
+// ---- Init ----
+
+function initArt() {
+  initAudioContext();
+  resize();
+  updateModeBadge();
+  startModeTimer();
+  showHud();
+  loop();
+}
+</script>
+</body>
+</html>
