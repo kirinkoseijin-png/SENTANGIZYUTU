@@ -89,6 +89,16 @@
       pointer-events: none;
     }
     #motion-dot.active { background: #6f6; }
+
+    /* Design loaded badge */
+    #design-badge {
+      position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
+      background: rgba(108,99,255,0.9); color: white;
+      border-radius: 99px; padding: 6px 18px; font-size: 12px;
+      pointer-events: none; opacity: 0;
+      transition: opacity 0.5s;
+    }
+    #design-badge.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -144,6 +154,7 @@
   </div>
   <div class="hud-right">
     <button class="hud-btn" id="btn-threshold">閾値調整</button>
+    <button class="hud-btn" id="btn-design">🎨 デザイン変更</button>
     <button class="hud-btn" id="btn-fullscreen">全画面</button>
     <button class="hud-btn" id="btn-setup">設定に戻る</button>
   </div>
@@ -151,6 +162,7 @@
 
 <div id="mode-badge">Mode 1 — 円（正弦波）</div>
 <div id="motion-dot"></div>
+<div id="design-badge">🎨 カスタムデザインを読み込みました</div>
 
 <!-- Threshold panel -->
 <div id="threshold-panel" class="hidden">
@@ -386,6 +398,10 @@ document.getElementById('btn-fullscreen').addEventListener('click', () => {
   }
 });
 
+document.getElementById('btn-design').addEventListener('click', () => {
+  window.open('learn.html#sec7', '_blank');
+});
+
 document.getElementById('btn-setup').addEventListener('click', () => {
   // Pause and go back to setup
   if (modeTimer) clearInterval(modeTimer);
@@ -417,6 +433,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'm' || e.key === 'M') switchMode();
   if (e.key === 't' || e.key === 'T') document.getElementById('btn-threshold').click();
   if (e.key === 's' || e.key === 'S') { soundEnabled = !soundEnabled; }
+  if (e.key === 'd' || e.key === 'D') document.getElementById('btn-design').click();
   if (e.key === 'Escape' && thresholdPanelVisible) {
     thresholdPanelVisible = false;
     document.getElementById('threshold-panel').classList.add('hidden');
@@ -461,61 +478,135 @@ function detectMotion() {
   return motionPoints;
 }
 
-// ---- Drawing modes ----
+// ---- Design state (loaded from learn.html via localStorage) ----
 
-function hslStr(h, s, l, a) {
-  return `hsla(${h|0},${s}%,${l}%,${a})`;
+const DESIGN_DEFAULTS = {
+  shape: 'circle', colorMode: 'rainbow', monoColor: '#6c63ff',
+  minSize: 4, maxSize: 32, fade: 0.06, opacity: 0.8,
+  blend: 'source-over', spread: 80, lineWidth: 2,
+};
+let design = { ...DESIGN_DEFAULTS };
+
+function loadDesign() {
+  try {
+    const saved = localStorage.getItem('ia-design');
+    if (saved) {
+      design = { ...DESIGN_DEFAULTS, ...JSON.parse(saved) };
+      const badge = document.getElementById('design-badge');
+      badge.classList.add('show');
+      setTimeout(() => badge.classList.remove('show'), 3000);
+    }
+  } catch (e) { /* ignore */ }
 }
 
-function randomHue() { return Math.random() * 360; }
+// ---- Drawing helpers ----
+
+function getDesignColor() {
+  switch (design.colorMode) {
+    case 'rainbow': return `hsl(${Math.random()*360|0},100%,62%)`;
+    case 'warm':    return `hsl(${Math.random()*60|0},100%,60%)`;
+    case 'cool':    return `hsl(${(180+Math.random()*80)|0},100%,62%)`;
+    case 'neon': {
+      const h = [300,180,270,120,60][Math.floor(Math.random()*5)];
+      return `hsl(${h},100%,65%)`;
+    }
+    case 'mono':    return design.monoColor;
+    default:        return `hsl(${Math.random()*360|0},100%,62%)`;
+  }
+}
+
+function drawDesignShape(x, y, r) {
+  ctx.beginPath();
+  switch (design.shape) {
+    case 'circle':
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      break;
+    case 'square':
+      ctx.rect(x - r, y - r, r * 2, r * 2);
+      break;
+    case 'diamond':
+      ctx.moveTo(x, y - r); ctx.lineTo(x + r, y);
+      ctx.lineTo(x, y + r); ctx.lineTo(x - r, y);
+      ctx.closePath();
+      break;
+    case 'star': {
+      const ir = r * 0.42;
+      for (let i = 0; i < 5; i++) {
+        const ao = Math.PI / 5 * 2 * i - Math.PI / 2;
+        const ai = ao + Math.PI / 5;
+        if (i === 0) ctx.moveTo(x + Math.cos(ao)*r, y + Math.sin(ao)*r);
+        else ctx.lineTo(x + Math.cos(ao)*r, y + Math.sin(ao)*r);
+        ctx.lineTo(x + Math.cos(ai)*ir, y + Math.sin(ai)*ir);
+      }
+      ctx.closePath();
+      break;
+    }
+    case 'ring':
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.arc(x, y, r * 0.45, 0, Math.PI * 2, true);
+      break;
+    default:
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+  }
+}
+
+// ---- Drawing modes ----
 
 function drawMode1(points) {
-  // ランダムなサイズのカラフルな円（論文：シンサカエ・ナイト・ミュージアム）
+  // ランダムなサイズのカラフルな図形（論文：シンサカエ・ナイト・ミュージアム）
+  ctx.globalCompositeOperation = design.blend;
+  ctx.globalAlpha = design.opacity;
   for (const pt of points) {
-    const r = 4 + Math.random() * 28;
-    const h = randomHue();
-    ctx.fillStyle = hslStr(h, 100, 60, 0.75);
-    ctx.beginPath();
-    ctx.arc(
+    const r = design.minSize + Math.random() * (design.maxSize - design.minSize);
+    ctx.fillStyle = getDesignColor();
+    drawDesignShape(
       pt.x + (Math.random() - 0.5) * 16,
       pt.y + (Math.random() - 0.5) * 16,
-      r, 0, Math.PI * 2
+      r
     );
     ctx.fill();
   }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 function drawMode2(points) {
-  // 均一サイズ・同色の円（論文：均一なサイズで同じ色で円が発生）
-  if (!mode2Color) mode2Color = hslStr(randomHue(), 90, 65, 0.8);
-  const r = 8;
+  // 均一サイズ・同色の図形（論文：均一なサイズで同じ色で発生）
+  if (!mode2Color) mode2Color = getDesignColor();
+  const r = design.minSize + (design.maxSize - design.minSize) * 0.25;
+  ctx.globalCompositeOperation = design.blend;
+  ctx.globalAlpha = design.opacity;
   ctx.fillStyle = mode2Color;
   for (const pt of points) {
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+    drawDesignShape(pt.x, pt.y, r);
     ctx.fill();
   }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 function drawMode3(points) {
   // ランダムな曲線（論文：ランダムな曲線が発生）
+  ctx.globalCompositeOperation = design.blend;
+  ctx.globalAlpha = design.opacity;
   for (const pt of points) {
-    const h = randomHue();
-    ctx.strokeStyle = hslStr(h, 100, 65, 0.65);
-    ctx.lineWidth = 1 + Math.random() * 2.5;
-    const spread = 80 + Math.random() * 80;
+    ctx.strokeStyle = getDesignColor();
+    ctx.lineWidth = design.lineWidth;
+    const sp = design.spread + Math.random() * design.spread * 0.5;
     ctx.beginPath();
     ctx.moveTo(pt.x, pt.y);
     ctx.bezierCurveTo(
-      pt.x + (Math.random() - 0.5) * spread,
-      pt.y + (Math.random() - 0.5) * spread,
-      pt.x + (Math.random() - 0.5) * spread,
-      pt.y + (Math.random() - 0.5) * spread,
-      pt.x + (Math.random() - 0.5) * spread * 1.5,
-      pt.y + (Math.random() - 0.5) * spread * 1.5
+      pt.x + (Math.random() - 0.5) * sp,
+      pt.y + (Math.random() - 0.5) * sp,
+      pt.x + (Math.random() - 0.5) * sp,
+      pt.y + (Math.random() - 0.5) * sp,
+      pt.x + (Math.random() - 0.5) * sp * 1.5,
+      pt.y + (Math.random() - 0.5) * sp * 1.5
     );
     ctx.stroke();
   }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 // ---- Main loop ----
@@ -537,7 +628,7 @@ function loop() {
   motionPixelCount = motionPoints.length;
 
   // Fade the canvas — gradually dim previous frames (徐々に消えていく効果)
-  ctx.fillStyle = 'rgba(0,0,0,0.06)';
+  ctx.fillStyle = `rgba(0,0,0,${design.fade})`;
   ctx.fillRect(0, 0, W, H);
 
   if (motionPoints.length > 0) {
@@ -578,6 +669,7 @@ function loop() {
 // ---- Init ----
 
 function initArt() {
+  loadDesign();
   initAudioContext();
   resize();
   updateModeBadge();

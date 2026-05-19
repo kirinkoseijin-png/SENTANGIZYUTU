@@ -278,6 +278,75 @@
     border: 1px solid rgba(255,209,102,0.3); border-radius: 6px; padding: 2px 8px; font-size: 12px; margin: 2px; }
   .spacer { height: 1px; background: #2a2a4e; margin: 40px 0; }
 
+  /* ===== DESIGN CONTROLS ===== */
+  .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  @media(max-width:480px){ .spec-grid{grid-template-columns:1fr;} }
+  .spec-card { background:var(--card); border-radius:10px; padding:14px; }
+  .spec-card ul { font-size:13px; line-height:2.1; padding-left:18px; color:var(--muted); }
+
+  .codeblock {
+    background: #050510; border-radius: 8px; padding: 12px 14px;
+    font-family: 'Consolas','Courier New',monospace; font-size: 12px;
+    overflow-x: auto; margin: 8px 0; line-height: 1.8;
+    border: 1px solid #2a2a4e;
+  }
+  .codeblock .cm { color: #555; }
+  .codeblock .cv { color: #ff6584; }
+  .codeblock .cn { color: #43d39e; }
+  .codeblock .cs { color: #ffd166; }
+  .codeblock .ck { color: #a88fff; }
+
+  .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl-label {
+    font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .ctrl-select {
+    background: #1a1a2e; color: var(--text);
+    border: 1px solid #3a3a6e; border-radius: 6px;
+    padding: 7px 8px; font-size: 12px; cursor: pointer; width: 100%;
+  }
+  .ctrl-select:focus { outline: none; border-color: var(--primary); }
+  .ctrl-range { width: 100%; accent-color: var(--primary); cursor: pointer; }
+  .range-pair { display: flex; align-items: center; gap: 6px; }
+  .range-pair input { flex: 1; }
+  .rp-label { font-size: 10px; color: #555; white-space: nowrap; }
+
+  .demo-mode-btn {
+    background: #1e1e3a; color: var(--muted);
+    border: 1px solid #3a3a6e; border-radius: 6px;
+    padding: 6px 12px; font-size: 11px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .demo-mode-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .demo-mode-btn:hover:not(.active) { border-color: #6c63ff; color: var(--text); }
+
+  .apply-btn {
+    background: linear-gradient(135deg, var(--primary), #a88fff);
+    color: white; border: none; border-radius: 8px;
+    padding: 10px 16px; font-size: 13px; font-weight: bold;
+    cursor: pointer; width: 100%; transition: opacity 0.2s;
+  }
+  .apply-btn:hover { opacity: 0.85; }
+
+  .design-demo-wrap {
+    display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start;
+  }
+  #design-demo {
+    border-radius: 10px; border: 1px solid #2a2a4e;
+    background: #000; cursor: crosshair;
+    flex-shrink: 0; max-width: 100%;
+  }
+  .design-controls {
+    flex: 1; min-width: 200px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .ctrl-section-title {
+    font-size: 10px; font-weight: bold; color: var(--primary);
+    letter-spacing: 1px; text-transform: uppercase;
+    border-bottom: 1px solid #2a2a4e; padding-bottom: 4px; margin-bottom: 2px;
+  }
+
   @media (max-width: 480px) {
     .camera-anim { gap: 10px; }
     .diff-row { gap: 6px; }
@@ -715,6 +784,235 @@
 
   <div class="spacer"></div>
 
+  <!-- ===== SECTION 7: デザインカスタマイズ ===== -->
+  <div class="section" id="sec7">
+    <div class="section-header">
+      <div class="step-badge" style="background:linear-gradient(135deg,#ffd166,#ff6584)">7</div>
+      <div>
+        <div class="section-title">デザインを自由に変えてみよう！</div>
+        <div class="section-subtitle">仕様はそのままで、見た目だけカスタマイズする方法</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <p>プログラムには <span class="keyword-box">仕様（スペック）</span> と <span class="keyword-box">デザイン</span> の2つの側面があります。</p>
+      <p><strong>仕様</strong>は「何をするか」の取り決め。今回は「画像差分法で動きを検出し、3モードの映像と音を出力する」こと。ここは変えません。</p>
+      <p><strong>デザイン</strong>は「どう見せるか」。色・形・大きさ・消えるスピードなど、見た目に関わる部分は自由に変更できます。</p>
+    </div>
+
+    <div class="spec-grid">
+      <div class="spec-card" style="border-left:4px solid var(--accent)">
+        <div style="color:var(--accent);font-size:12px;font-weight:bold;margin-bottom:8px">❌ 仕様（変えてはいけない）</div>
+        <ul>
+          <li>画像差分法で動きを検出する</li>
+          <li>3つのモードが1分ごとに切替</li>
+          <li>y座標で音の高さが変わる</li>
+          <li>3種類の波形で音を生成する</li>
+        </ul>
+      </div>
+      <div class="spec-card" style="border-left:4px solid var(--green)">
+        <div style="color:var(--green);font-size:12px;font-weight:bold;margin-bottom:8px">✅ デザイン（変えてよい）</div>
+        <ul>
+          <li>図形の形・サイズ</li>
+          <li>色のテーマ・透明度</li>
+          <li>消えるスピード（残像の長さ）</li>
+          <li>ブレンドモード（重なり方）</li>
+          <li>曲線の太さ・広がり</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="highlight"><strong>コードのどこを変えると何が変わる？</strong></div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;margin:16px 0">
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--yellow);margin-bottom:8px">📐 図形のサイズを変える（Mode 1）</div>
+        <div class="codeblock"><span class="cm">// 変更前（最小4px〜最大32px）</span>
+const r = <span class="cv">4</span> + Math.random() * <span class="cv">28</span>;
+
+<span class="cm">// 変更後：大きくする（最小10px〜最大70px）</span>
+const r = <span class="cn">10</span> + Math.random() * <span class="cn">60</span>;
+
+<span class="cm">// 変更後：小さく均一にする</span>
+const r = <span class="cn">3</span> + Math.random() * <span class="cn">5</span>;</div>
+        <p style="font-size:12px;color:var(--muted);margin-top:6px">最初の数字＝最小サイズ、足す数字が大きいほど最大サイズが大きくなります</p>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--yellow);margin-bottom:8px">🎨 色のテーマを変える</div>
+        <div class="codeblock"><span class="cm">// レインボー（0〜360度 = すべての色）</span>
+ctx.fillStyle = <span class="cs">`hsl(<span class="ck">${Math.random()*360}</span>, 100%, 60%)`</span>;
+
+<span class="cm">// 暖色のみ（赤〜黄、0〜60度）</span>
+ctx.fillStyle = <span class="cs">`hsl(<span class="ck">${Math.random()*60}</span>, 100%, 60%)`</span>;
+
+<span class="cm">// 寒色のみ（青〜水色、180〜260度）</span>
+ctx.fillStyle = <span class="cs">`hsl(<span class="ck">${180+Math.random()*80}</span>, 100%, 60%)`</span>;
+
+<span class="cm">// 1色に固定する（220度＝青）</span>
+ctx.fillStyle = <span class="cs">`hsl(<span class="cn">220</span>, 100%, 60%)`</span>;</div>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--yellow);margin-bottom:8px">⏱ 消えるスピードを変える</div>
+        <div class="codeblock"><span class="cm">// 普通（0.06 → 少し残像が残る）</span>
+ctx.fillStyle = <span class="cs">'rgba(0,0,0,<span class="cv">0.06</span>)'</span>;
+
+<span class="cm">// 早く消える（0.15 → すぐ消える）</span>
+ctx.fillStyle = <span class="cs">'rgba(0,0,0,<span class="cn">0.15</span>)'</span>;
+
+<span class="cm">// ゆっくり消える（0.02 → 長い残像）</span>
+ctx.fillStyle = <span class="cs">'rgba(0,0,0,<span class="ck">0.02</span>)'</span>;</div>
+        <p style="font-size:12px;color:var(--muted);margin-top:6px">数値が大きいほど黒が濃く塗られるので早く消える、小さいほど残像が残ります</p>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div style="font-size:12px;color:var(--yellow);margin-bottom:8px">✨ ブレンドモードで光らせる</div>
+        <div class="codeblock"><span class="cm">// 通常（重なっても色が混ざらない）</span>
+ctx.globalCompositeOperation = <span class="cs">'source-over'</span>;
+
+<span class="cm">// 加算合成（色が重なって光のように明るくなる）</span>
+ctx.globalCompositeOperation = <span class="cs">'lighter'</span>;
+
+<span class="cm">// スクリーン合成（やわらかく発光する感じ）</span>
+ctx.globalCompositeOperation = <span class="cs">'screen'</span>;</div>
+      </div>
+    </div>
+
+    <!-- Live Demo -->
+    <div class="illust-wrap" style="padding:20px;align-items:stretch">
+      <div style="font-weight:bold;font-size:14px;color:var(--yellow);margin-bottom:14px;text-align:center">
+        🖱 ライブデモ — スライダーを操作して変化を確認しよう
+      </div>
+      <div class="design-demo-wrap">
+        <div>
+          <canvas id="design-demo" width="310" height="220"></canvas>
+          <div style="display:flex;gap:6px;margin-top:8px;justify-content:center;flex-wrap:wrap">
+            <button class="demo-mode-btn active" data-dmode="0">Mode 1（ランダム円）</button>
+            <button class="demo-mode-btn" data-dmode="1">Mode 2（均一円）</button>
+            <button class="demo-mode-btn" data-dmode="2">Mode 3（曲線）</button>
+          </div>
+          <p style="font-size:11px;color:#555;text-align:center;margin-top:6px">※タッチ操作にも対応</p>
+        </div>
+
+        <div class="design-controls">
+          <div class="ctrl-section-title">図形</div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-label">形状</div>
+            <select id="dc-shape" class="ctrl-select">
+              <option value="circle">● 円（基本）</option>
+              <option value="square">■ 四角形</option>
+              <option value="diamond">◆ ひし形</option>
+              <option value="star">★ 星</option>
+              <option value="ring">○ リング（枠のみ）</option>
+            </select>
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-label">
+              <span>サイズ範囲（最小〜最大）</span>
+              <span id="dc-size-val" style="color:var(--primary);font-size:11px">4 〜 32px</span>
+            </div>
+            <div class="range-pair">
+              <span class="rp-label">小</span>
+              <input type="range" id="dc-minsize" class="ctrl-range" min="1" max="20" value="4">
+              <span class="rp-label">〜</span>
+              <input type="range" id="dc-maxsize" class="ctrl-range" min="10" max="80" value="32">
+              <span class="rp-label">大</span>
+            </div>
+          </div>
+
+          <div class="ctrl-section-title" style="margin-top:4px">色</div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-label">カラーテーマ</div>
+            <select id="dc-colormode" class="ctrl-select">
+              <option value="rainbow">🌈 レインボー（全色）</option>
+              <option value="warm">🔥 暖色（赤〜黄）</option>
+              <option value="cool">❄ 寒色（青〜水色）</option>
+              <option value="neon">💜 ネオン（鮮やか）</option>
+              <option value="mono">⚪ 単色（下の色を使用）</option>
+            </select>
+          </div>
+
+          <div class="ctrl-group" id="dc-mono-row" style="display:none">
+            <div class="ctrl-label">単色の色</div>
+            <input type="color" id="dc-monocolor" value="#6c63ff"
+              style="width:100%;height:34px;border:1px solid #3a3a6e;border-radius:6px;cursor:pointer;background:#1a1a2e;padding:2px">
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-label">
+              <span>不透明度</span>
+              <span id="dc-opacity-val" style="color:var(--primary);font-size:11px">80%</span>
+            </div>
+            <input type="range" id="dc-opacity" class="ctrl-range" min="20" max="100" value="80">
+          </div>
+
+          <div class="ctrl-section-title" style="margin-top:4px">アニメーション</div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-label">
+              <span>消えるスピード</span>
+              <span id="dc-fade-val" style="color:var(--primary);font-size:11px">普通</span>
+            </div>
+            <input type="range" id="dc-fade" class="ctrl-range" min="1" max="25" value="6">
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-label">ブレンドモード</div>
+            <select id="dc-blend" class="ctrl-select">
+              <option value="source-over">通常</option>
+              <option value="lighter">加算（光る）</option>
+              <option value="screen">スクリーン（やわらか発光）</option>
+            </select>
+          </div>
+
+          <div class="ctrl-section-title" style="margin-top:4px">Mode 3 曲線</div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-label">
+              <span>曲線の広がり</span>
+              <span id="dc-spread-val" style="color:var(--primary);font-size:11px">80</span>
+            </div>
+            <input type="range" id="dc-spread" class="ctrl-range" min="20" max="200" value="80">
+          </div>
+
+          <div class="ctrl-group">
+            <div class="ctrl-label">
+              <span>線の太さ</span>
+              <span id="dc-lw-val" style="color:var(--primary);font-size:11px">2px</span>
+            </div>
+            <input type="range" id="dc-lw" class="ctrl-range" min="5" max="50" value="20">
+          </div>
+
+          <button class="apply-btn" id="dc-apply-btn" style="margin-top:6px">
+            🎨 この設定を index.html に反映する
+          </button>
+          <div id="dc-apply-msg" style="display:none;font-size:11px;color:var(--green);text-align:center;padding:4px">
+            ✅ 保存しました。index.html を開き直すと反映されます。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quiz 8 -->
+    <div class="quiz-wrap" id="quiz7">
+      <span class="quiz-label">Q U I Z &nbsp; 8</span>
+      <div class="quiz-q">図形が画面に残る時間（残像の長さ）を長くしたい。どのコードを変えればよい？</div>
+      <div class="quiz-choices" data-correct="3">
+        <button class="choice-btn"><span class="choice-mark">A</span>図形を描く <code>ctx.arc()</code> の半径を大きくする</button>
+        <button class="choice-btn"><span class="choice-mark">B</span>フレームレート（1秒あたりの処理回数）を増やす</button>
+        <button class="choice-btn"><span class="choice-mark">C</span><code>ctx.globalCompositeOperation = 'lighter'</code> に変える</button>
+        <button class="choice-btn"><span class="choice-mark">D</span>毎フレーム重ねる黒の <code>rgba(0,0,0, 数値)</code> の数値を小さくする</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
   <!-- ===== FINAL RESULT ===== -->
   <div id="final-result">
     <div style="font-size:48px;margin-bottom:8px">🎉</div>
@@ -737,9 +1035,10 @@ const EXPLANATIONS = [
   { correct: 'y座標（縦方向の位置）で音の高さが変わります。上部＝高音、下部＝低音です。', wrong: 'y座標（画面の縦位置）によって周波数（音の高さ）が決まります。' },
   { correct: 'Camo StudioはiPhoneを仮想Webカメラとして認識させるソフトです。JavaScriptから普通のカメラとして使えます。', wrong: 'Camo Studioの役割は「仮想Webカメラ化」です。iPhoneを本物のWebカメラのようにPCに認識させます。' },
   { correct: 'フレームを取得してから差分を計算し、図形を描き、音を鳴らす流れです。', wrong: 'フレーム取得→差分計算→描画→フェード→音生成の順番で処理が行われます。' },
+  { correct: '毎フレームに重ねる黒の透明度を小さくすると消えにくくなり、残像が長く残ります。0.02 など小さい値にするほど残像が長くなります。', wrong: '残像の長さは「毎フレーム重ねる黒の透明度」で決まります。rgba(0,0,0, 数値) の数値を小さくすると残像が長くなります。' },
 ];
 
-let totalQuestions = 7;
+let totalQuestions = 8;
 let answeredCount = 0;
 let correctCount = 0;
 const answeredQuizzes = new Set();
@@ -1021,6 +1320,227 @@ document.querySelectorAll('.section').forEach(s => observer.observe(s));
       p.x+(Math.random()-.5)*sp*1.5, p.y+(Math.random()-.5)*sp*1.5
     );
     ctx.stroke();
+  });
+})();
+
+// ===== Design Demo =====
+(function() {
+  const canvas = document.getElementById('design-demo');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // Design state (mirrors index.html design object)
+  const D = {
+    shape: 'circle', colorMode: 'rainbow', monoColor: '#6c63ff',
+    minSize: 4, maxSize: 32, fade: 0.06, opacity: 0.8,
+    blend: 'source-over', spread: 80, lineWidth: 2,
+  };
+
+  let demoMode = 0;
+  let mode2Color = null;
+  let mousePoints = [];
+  let lastPos = null;
+  let promptShown = true;
+
+  // Draw initial prompt
+  ctx.fillStyle = '#0a0a14';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#3a3a5e';
+  ctx.font = '13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('← マウス / タッチで動かしてください →', W / 2, H / 2);
+  ctx.textAlign = 'left';
+
+  function addPoint(x, y) {
+    if (promptShown) {
+      promptShown = false;
+      ctx.fillStyle = '#0a0a14';
+      ctx.fillRect(0, 0, W, H);
+    }
+    if (lastPos) {
+      const dx = x - lastPos.x, dy = y - lastPos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const steps = Math.max(1, Math.ceil(dist / 4));
+      for (let i = 0; i < steps; i++) {
+        mousePoints.push({ x: lastPos.x + dx * i / steps, y: lastPos.y + dy * i / steps });
+      }
+    }
+    lastPos = { x, y };
+  }
+
+  function getRect(el) { return el.getBoundingClientRect(); }
+
+  canvas.addEventListener('mousemove', e => {
+    const r = getRect(canvas);
+    addPoint((e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height);
+  });
+  canvas.addEventListener('mouseleave', () => { lastPos = null; });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const r = getRect(canvas), t = e.touches[0];
+    addPoint((t.clientX - r.left) * W / r.width, (t.clientY - r.top) * H / r.height);
+  }, { passive: false });
+  canvas.addEventListener('touchend', () => { lastPos = null; });
+
+  function getColor() {
+    switch (D.colorMode) {
+      case 'rainbow': return `hsl(${Math.random() * 360},100%,62%)`;
+      case 'warm':    return `hsl(${Math.random() * 60},100%,60%)`;
+      case 'cool':    return `hsl(${180 + Math.random() * 80},100%,62%)`;
+      case 'neon': {
+        const h = [300, 180, 270, 120, 60][Math.floor(Math.random() * 5)];
+        return `hsl(${h},100%,65%)`;
+      }
+      case 'mono': return D.monoColor;
+    }
+  }
+
+  function drawShape(x, y, r) {
+    ctx.beginPath();
+    switch (D.shape) {
+      case 'circle':
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        break;
+      case 'square':
+        ctx.rect(x - r, y - r, r * 2, r * 2);
+        break;
+      case 'diamond':
+        ctx.moveTo(x, y - r); ctx.lineTo(x + r, y);
+        ctx.lineTo(x, y + r); ctx.lineTo(x - r, y);
+        ctx.closePath();
+        break;
+      case 'star': {
+        const ir = r * 0.42;
+        for (let i = 0; i < 5; i++) {
+          const ao = Math.PI / 5 * 2 * i - Math.PI / 2;
+          const ai = ao + Math.PI / 5;
+          if (i === 0) ctx.moveTo(x + Math.cos(ao) * r, y + Math.sin(ao) * r);
+          else ctx.lineTo(x + Math.cos(ao) * r, y + Math.sin(ao) * r);
+          ctx.lineTo(x + Math.cos(ai) * ir, y + Math.sin(ai) * ir);
+        }
+        ctx.closePath();
+        break;
+      }
+      case 'ring':
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.arc(x, y, r * 0.45, 0, Math.PI * 2, true);
+        break;
+    }
+  }
+
+  function loop() {
+    requestAnimationFrame(loop);
+    if (promptShown) return;
+
+    // Fade
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = `rgba(0,0,0,${D.fade})`;
+    ctx.fillRect(0, 0, W, H);
+
+    if (mousePoints.length === 0) return;
+    const pts = mousePoints.splice(0, mousePoints.length);
+
+    ctx.globalCompositeOperation = D.blend;
+    ctx.globalAlpha = D.opacity;
+
+    for (const pt of pts) {
+      if (demoMode === 0) {
+        const r = D.minSize + Math.random() * (D.maxSize - D.minSize);
+        ctx.fillStyle = getColor();
+        drawShape(pt.x + (Math.random() - 0.5) * 10, pt.y + (Math.random() - 0.5) * 10, r);
+        ctx.fill();
+      } else if (demoMode === 1) {
+        if (!mode2Color) mode2Color = getColor();
+        ctx.fillStyle = mode2Color;
+        const r = D.minSize + (D.maxSize - D.minSize) * 0.25;
+        drawShape(pt.x, pt.y, r);
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = getColor();
+        ctx.lineWidth = D.lineWidth;
+        const sp = D.spread;
+        ctx.beginPath();
+        ctx.moveTo(pt.x, pt.y);
+        ctx.bezierCurveTo(
+          pt.x + (Math.random() - 0.5) * sp, pt.y + (Math.random() - 0.5) * sp,
+          pt.x + (Math.random() - 0.5) * sp, pt.y + (Math.random() - 0.5) * sp,
+          pt.x + (Math.random() - 0.5) * sp * 1.5, pt.y + (Math.random() - 0.5) * sp * 1.5
+        );
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  loop();
+
+  // Mode buttons
+  document.querySelectorAll('.demo-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.demo-mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      demoMode = parseInt(btn.dataset.dmode);
+      mode2Color = null;
+    });
+  });
+
+  // Control bindings
+  function bind(id, fn) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => fn(el.value));
+  }
+
+  bind('dc-shape', v => { D.shape = v; });
+
+  bind('dc-colormode', v => {
+    D.colorMode = v;
+    mode2Color = null;
+    document.getElementById('dc-mono-row').style.display = v === 'mono' ? 'flex' : 'none';
+  });
+
+  bind('dc-monocolor', v => { D.monoColor = v; mode2Color = null; });
+
+  function updateSizeLabel() {
+    document.getElementById('dc-size-val').textContent =
+      `${D.minSize} 〜 ${D.maxSize}px`;
+  }
+  bind('dc-minsize', v => { D.minSize = parseInt(v); updateSizeLabel(); });
+  bind('dc-maxsize', v => { D.maxSize = parseInt(v); updateSizeLabel(); });
+
+  bind('dc-opacity', v => {
+    D.opacity = parseInt(v) / 100;
+    document.getElementById('dc-opacity-val').textContent = v + '%';
+  });
+
+  bind('dc-fade', v => {
+    D.fade = parseInt(v) / 100;
+    const labels = ['', 'とても遅い', '遅い', '遅め', '普通', '普通', '普通',
+      '普通', '速め', '速め', '速め', '速め', '速い', '速い', '速い',
+      '速い', '速い', '速い', 'とても速い', 'とても速い', 'とても速い',
+      'とても速い', '超速い', '超速い', '超速い', '超速い'];
+    document.getElementById('dc-fade-val').textContent = labels[parseInt(v)] || '';
+  });
+
+  bind('dc-blend', v => { D.blend = v; });
+
+  bind('dc-spread', v => {
+    D.spread = parseInt(v);
+    document.getElementById('dc-spread-val').textContent = v;
+  });
+
+  bind('dc-lw', v => {
+    D.lineWidth = parseInt(v) / 10;
+    document.getElementById('dc-lw-val').textContent = (parseInt(v) / 10).toFixed(1) + 'px';
+  });
+
+  // Apply to index.html via localStorage
+  document.getElementById('dc-apply-btn').addEventListener('click', () => {
+    localStorage.setItem('ia-design', JSON.stringify(D));
+    const msg = document.getElementById('dc-apply-msg');
+    msg.style.display = 'block';
+    setTimeout(() => { msg.style.display = 'none'; }, 3000);
   });
 })();
 </script>
