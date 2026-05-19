@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>インタラクティブアートのしくみを学ぼう</title>
+<style>
+  :root {
+    --primary: #6c63ff;
+    --accent: #ff6584;
+    --green: #43d39e;
+    --yellow: #ffd166;
+    --bg: #0f0f1a;
+    --card: #1a1a2e;
+    --card2: #16213e;
+    --text: #e8e8f0;
+    --muted: #888aaa;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+    line-height: 1.7;
+    font-size: 16px;
+  }
+
+  /* ===== HEADER ===== */
+  header {
+    background: linear-gradient(135deg, #1a1a3e 0%, #0f0f1a 100%);
+    padding: 60px 20px 40px;
+    text-align: center;
+    border-bottom: 2px solid #2a2a4e;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(108,99,255,0.2) 0%, transparent 70%);
+  }
+  header h1 {
+    font-size: clamp(22px, 5vw, 40px);
+    font-weight: 900;
+    background: linear-gradient(90deg, #6c63ff, #ff6584, #ffd166);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 12px; position: relative;
+  }
+  header p { color: var(--muted); font-size: 15px; position: relative; }
+
+  /* ===== PROGRESS ===== */
+  #progress-bar-wrap {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,15,26,0.95); backdrop-filter: blur(8px);
+    padding: 10px 20px;
+    border-bottom: 1px solid #2a2a4e;
+    display: flex; align-items: center; gap: 14px;
+  }
+  #progress-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  #progress-track {
+    flex: 1; height: 6px; background: #2a2a4e; border-radius: 99px; overflow: hidden;
+  }
+  #progress-fill {
+    height: 100%; background: linear-gradient(90deg, #6c63ff, #ff6584);
+    border-radius: 99px; width: 0%; transition: width 0.5s ease;
+  }
+  #score-display { font-size: 12px; color: var(--yellow); white-space: nowrap; }
+
+  /* ===== MAIN ===== */
+  main { max-width: 820px; margin: 0 auto; padding: 40px 20px 80px; }
+
+  /* ===== SECTION ===== */
+  .section {
+    margin-bottom: 60px;
+    opacity: 0; transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .section.visible { opacity: 1; transform: none; }
+
+  .section-header {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+  }
+  .step-badge {
+    min-width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 16px;
+    background: linear-gradient(135deg, var(--primary), #a88fff);
+    color: white; flex-shrink: 0;
+  }
+  .section-title { font-size: clamp(18px, 4vw, 24px); font-weight: 800; }
+  .section-subtitle { font-size: 13px; color: var(--muted); }
+
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 24px; margin-bottom: 16px;
+    border: 1px solid #2a2a4e;
+  }
+  .card p + p { margin-top: 10px; }
+
+  .highlight {
+    background: linear-gradient(135deg, #1e1b4b, #1a1a3e);
+    border-left: 4px solid var(--primary);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 16px 20px; margin: 16px 0;
+    font-size: 15px;
+  }
+  .highlight strong { color: #a88fff; }
+
+  /* ===== ILLUSTRATION ===== */
+  .illust-wrap {
+    background: var(--card2); border-radius: var(--radius);
+    padding: 20px; margin: 16px 0;
+    border: 1px solid #2a2a4e;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .illust-wrap p { font-size: 12px; color: var(--muted); text-align: center; }
+
+  /* Camera illustration */
+  .camera-anim { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; justify-content: center; }
+  .camera-box {
+    width: 80px; height: 60px; background: #333; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; position: relative;
+  }
+  .camera-lens {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #6c63ff, #1a1a2e);
+    border: 3px solid #555;
+  }
+  .arrow-right {
+    font-size: 24px; color: var(--primary);
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scaleX(1)} 50%{opacity:0.5;transform:scaleX(0.8)} }
+
+  .frame-strip { display: flex; gap: 6px; }
+  .frame-box {
+    width: 50px; height: 40px; border-radius: 4px;
+    border: 2px solid #444; overflow: hidden; position: relative;
+  }
+  .frame-box canvas { width: 100%; height: 100%; display: block; }
+
+  /* Diff illustration */
+  .diff-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .diff-cell { text-align: center; font-size: 11px; color: var(--muted); }
+  .diff-img {
+    width: 72px; height: 72px; border-radius: 8px;
+    border: 2px solid #444; display: block; margin: 0 auto 4px;
+  }
+  .diff-op { font-size: 22px; color: var(--accent); font-weight: bold; }
+  .diff-result {
+    width: 72px; height: 72px; border-radius: 8px;
+    border: 2px solid var(--green);
+    background: #000; display: block; margin: 0 auto 4px;
+    position: relative; overflow: hidden;
+  }
+
+  /* Mode illustrations */
+  .modes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .mode-card {
+    background: var(--card2); border-radius: 10px; padding: 14px;
+    border: 1px solid #2a2a4e; text-align: center;
+  }
+  .mode-card canvas { border-radius: 6px; display: block; margin: 0 auto 8px; }
+  .mode-card h4 { font-size: 13px; color: var(--yellow); margin-bottom: 4px; }
+  .mode-card p { font-size: 12px; color: var(--muted); }
+
+  /* Sound illustration */
+  .sound-row { display: flex; align-items: flex-end; gap: 8px; justify-content: center; padding: 16px 0; }
+  .sound-bar {
+    width: 24px; border-radius: 4px 4px 0 0;
+    background: linear-gradient(to top, var(--primary), var(--accent));
+    animation: soundbar 1.5s ease-in-out infinite;
+  }
+  @keyframes soundbar { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(0.4)} }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; gap: 8px; }
+  .flow-step {
+    background: var(--card2); border-radius: 10px; padding: 12px 16px;
+    border-left: 4px solid var(--primary);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .flow-step .num {
+    min-width: 28px; height: 28px; border-radius: 50%;
+    background: var(--primary); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: bold; flex-shrink: 0;
+  }
+  .flow-arrow { text-align: center; font-size: 20px; color: var(--muted); }
+
+  /* ===== KEYWORD BOX ===== */
+  .keyword-box {
+    display: inline-block; background: rgba(108,99,255,0.15);
+    border: 1px solid rgba(108,99,255,0.4); border-radius: 6px;
+    padding: 2px 8px; font-weight: bold; color: #a88fff;
+    font-size: 0.95em;
+  }
+
+  /* ===== QUIZ ===== */
+  .quiz-wrap {
+    background: linear-gradient(135deg, #1a1a3e, #16213e);
+    border-radius: var(--radius); padding: 24px;
+    border: 2px solid #3a3a6e; margin-top: 24px;
+  }
+  .quiz-label {
+    display: inline-block; background: var(--accent);
+    color: white; font-size: 11px; font-weight: bold;
+    padding: 3px 10px; border-radius: 99px; margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+  .quiz-q { font-size: 16px; font-weight: 700; margin-bottom: 16px; line-height: 1.5; }
+  .quiz-choices { display: flex; flex-direction: column; gap: 8px; }
+  .choice-btn {
+    background: #1e1e3a; border: 2px solid #3a3a6e;
+    color: var(--text); border-radius: 10px;
+    padding: 12px 16px; font-size: 14px; cursor: pointer;
+    text-align: left; transition: all 0.2s;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .choice-btn:hover:not(:disabled) { border-color: var(--primary); background: #252550; }
+  .choice-btn .choice-mark {
+    min-width: 26px; height: 26px; border-radius: 50%;
+    background: #2a2a4e; display: flex; align-items: center;
+    justify-content: center; font-size: 12px; font-weight: bold;
+  }
+  .choice-btn.correct { border-color: var(--green); background: rgba(67,211,158,0.12); }
+  .choice-btn.correct .choice-mark { background: var(--green); color: #000; }
+  .choice-btn.wrong { border-color: var(--accent); background: rgba(255,101,132,0.12); }
+  .choice-btn.wrong .choice-mark { background: var(--accent); color: #fff; }
+  .choice-btn:disabled { cursor: default; opacity: 0.8; }
+
+  .quiz-feedback {
+    margin-top: 14px; padding: 12px 16px; border-radius: 10px;
+    font-size: 14px; display: none;
+  }
+  .quiz-feedback.correct-fb { background: rgba(67,211,158,0.12); border: 1px solid var(--green); color: var(--green); }
+  .quiz-feedback.wrong-fb { background: rgba(255,101,132,0.12); border: 1px solid var(--accent); color: #ffaaaa; }
+  .quiz-feedback strong { display: block; font-size: 15px; margin-bottom: 4px; }
+
+  /* ===== FINAL SCORE ===== */
+  #final-result {
+    background: linear-gradient(135deg, #1a1a3e, #0f0f1a);
+    border: 2px solid var(--primary); border-radius: 20px;
+    padding: 40px 24px; text-align: center;
+    display: none;
+  }
+  #final-result h2 { font-size: 28px; margin-bottom: 8px; }
+  #final-score-big {
+    font-size: 72px; font-weight: 900;
+    background: linear-gradient(90deg, #6c63ff, #ffd166);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    line-height: 1.1; margin: 16px 0;
+  }
+  #final-comment { color: var(--muted); font-size: 15px; margin-bottom: 24px; }
+  .restart-btn {
+    background: var(--primary); color: white;
+    border: none; border-radius: 99px;
+    padding: 12px 32px; font-size: 15px; font-weight: bold;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .restart-btn:hover { background: #5550dd; }
+
+  /* confetti */
+  .confetti-piece {
+    position: fixed; width: 10px; height: 10px; border-radius: 2px;
+    animation: confetti-fall 2.5s ease-out forwards;
+    pointer-events: none; z-index: 9999;
+  }
+  @keyframes confetti-fall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* ===== MISC ===== */
+  .tag { display: inline-block; background: rgba(255,209,102,0.15); color: var(--yellow);
+    border: 1px solid rgba(255,209,102,0.3); border-radius: 6px; padding: 2px 8px; font-size: 12px; margin: 2px; }
+  .spacer { height: 1px; background: #2a2a4e; margin: 40px 0; }
+
+  @media (max-width: 480px) {
+    .camera-anim { gap: 10px; }
+    .diff-row { gap: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>インタラクティブアートの<br>しくみを学ぼう 🎨</h1>
+  <p>Webカメラ × JavaScript × 画像差分法</p>
+</header>
+
+<div id="progress-bar-wrap">
+  <span id="progress-label">進捗：0 / 7</span>
+  <div id="progress-track"><div id="progress-fill"></div></div>
+  <span id="score-display">スコア：0 / 0</span>
+</div>
+
+<main>
+
+  <!-- ===== SECTION 0: そもそも何を作ったの？ ===== -->
+  <div class="section" id="sec0">
+    <div class="section-header">
+      <div class="step-badge">0</div>
+      <div>
+        <div class="section-title">そもそも何を作ったの？</div>
+        <div class="section-subtitle">全体のイメージをつかもう</div>
+      </div>
+    </div>
+    <div class="card">
+      <p>今回作ったのは、<span class="keyword-box">インタラクティブアート</span>と呼ばれる作品です。</p>
+      <p>「インタラクティブ」とは<strong>「対話的な」</strong>という意味。つまり、見ている人が動くと映像がリアルタイムで変化する、<strong>「観客が参加できるアート」</strong>のことです。</p>
+    </div>
+    <div class="highlight">
+      <strong>身近な例えで言うと…</strong><br>
+      ゲームで自分のキャラクターを動かすと画面が変わりますよね？それと同じように、カメラの前で手を振ったり歩いたりすると、プロジェクターに映る映像がリアルタイムで変化します。
+    </div>
+    <div class="illust-wrap">
+      <svg width="480" height="110" viewBox="0 0 480 110" style="max-width:100%">
+        <!-- iPhone/Camo -->
+        <rect x="20" y="20" width="50" height="70" rx="8" fill="#2a2a4e" stroke="#6c63ff" stroke-width="2"/>
+        <rect x="28" y="28" width="34" height="48" rx="4" fill="#1a1a3e"/>
+        <circle cx="45" cy="82" r="4" fill="#6c63ff"/>
+        <text x="45" y="110" text-anchor="middle" fill="#888aaa" font-size="10">iPhone</text>
+        <!-- Arrow -->
+        <path d="M75 55 L115 55" stroke="#6c63ff" stroke-width="2" marker-end="url(#arr)"/>
+        <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6c63ff"/></marker></defs>
+        <!-- PC/Browser -->
+        <rect x="120" y="15" width="100" height="70" rx="8" fill="#2a2a4e" stroke="#a88fff" stroke-width="2"/>
+        <rect x="128" y="23" width="84" height="52" rx="4" fill="#0f0f1a"/>
+        <text x="170" y="52" text-anchor="middle" fill="#6c63ff" font-size="9">JavaScript</text>
+        <text x="170" y="64" text-anchor="middle" fill="#a88fff" font-size="8">画像差分法</text>
+        <rect x="140" y="85" width="60" height="6" rx="3" fill="#333"/>
+        <text x="170" y="108" text-anchor="middle" fill="#888aaa" font-size="10">PC(Chrome)</text>
+        <!-- Arrow -->
+        <path d="M225 55 L265 55" stroke="#ff6584" stroke-width="2" marker-end="url(#arr2)"/>
+        <defs><marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ff6584"/></marker></defs>
+        <!-- Projector -->
+        <rect x="270" y="25" width="70" height="42" rx="6" fill="#2a2a4e" stroke="#ffd166" stroke-width="2"/>
+        <circle cx="285" cy="46" r="10" fill="#ffd166" opacity="0.4"/>
+        <circle cx="285" cy="46" r="6" fill="#ffd166"/>
+        <rect x="295" y="38" width="35" height="16" rx="3" fill="#333"/>
+        <text x="305" y="49" fill="#888" font-size="7" text-anchor="middle">lens</text>
+        <text x="305" y="82" text-anchor="middle" fill="#888aaa" font-size="10">プロジェクター</text>
+        <!-- Screen -->
+        <rect x="355" y="15" width="105" height="75" rx="4" fill="#0a0a18" stroke="#ffd166" stroke-width="1.5"/>
+        <!-- circles on screen -->
+        <circle cx="390" cy="45" r="12" fill="rgba(108,99,255,0.6)"/>
+        <circle cx="420" cy="60" r="8" fill="rgba(255,101,132,0.6)"/>
+        <circle cx="405" cy="30" r="6" fill="rgba(255,209,102,0.6)"/>
+        <circle cx="440" cy="40" r="10" fill="rgba(67,211,158,0.5)"/>
+        <text x="407" y="106" text-anchor="middle" fill="#888aaa" font-size="10">映像（壁・スクリーン）</text>
+      </svg>
+      <p>iPhoneのカメラ映像 → PCで処理 → プロジェクターで投影</p>
+    </div>
+
+    <!-- Quiz 0 -->
+    <div class="quiz-wrap" id="quiz0">
+      <span class="quiz-label">Q U I Z &nbsp; 1</span>
+      <div class="quiz-q">「インタラクティブアート」の説明として正しいものはどれ？</div>
+      <div class="quiz-choices" data-correct="2">
+        <button class="choice-btn"><span class="choice-mark">A</span>美術館に飾られた絵画のこと</button>
+        <button class="choice-btn"><span class="choice-mark">B</span>コンピューターで作られた映像を流すだけの展示</button>
+        <button class="choice-btn"><span class="choice-mark">C</span>見ている人の動きに合わせてリアルタイムで映像が変化するアート</button>
+        <button class="choice-btn"><span class="choice-mark">D</span>ゲームを使ったスポーツ競技</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <!-- ===== SECTION 1: カメラとフレーム ===== -->
+  <div class="section" id="sec1">
+    <div class="section-header">
+      <div class="step-badge">1</div>
+      <div>
+        <div class="section-title">カメラの映像って何でできてる？</div>
+        <div class="section-subtitle">フレームとピクセルを理解しよう</div>
+      </div>
+    </div>
+    <div class="card">
+      <p>動画は実は、<strong>パラパラ漫画</strong>と同じです。</p>
+      <p>1秒間に約30枚の「静止画像」を連続して表示することで、映像が動いているように見えます。この1枚1枚の静止画を <span class="keyword-box">フレーム</span> と呼びます。</p>
+      <p>そしてフレームの1枚は、細かい色の点（<span class="keyword-box">ピクセル</span>）が集まって作られています。例えば1280×720サイズの画像は 921,600個 のピクセルで構成されています。</p>
+    </div>
+    <div class="illust-wrap">
+      <canvas id="frame-demo" width="440" height="100" style="max-width:100%;border-radius:8px;"></canvas>
+      <p>1秒間に約30枚のフレームが流れる → 動いているように見える</p>
+    </div>
+    <div class="highlight">
+      <strong>ピクセルの色は R・G・B の3つの数字で表現されます。</strong><br>
+      例えば赤色 → R:255, G:0, B:0　／　青色 → R:0, G:0, B:255<br>
+      この数字を比べることで「色が変わったか」を判定できます。
+    </div>
+
+    <!-- Quiz 1 -->
+    <div class="quiz-wrap" id="quiz1">
+      <span class="quiz-label">Q U I Z &nbsp; 2</span>
+      <div class="quiz-q">動画（ビデオ）の正しい説明はどれ？</div>
+      <div class="quiz-choices" data-correct="1">
+        <button class="choice-btn"><span class="choice-mark">A</span>1枚の大きな絵が動いている</button>
+        <button class="choice-btn"><span class="choice-mark">B</span>たくさんの静止画像（フレーム）を素早く切り替えることで動いて見える</button>
+        <button class="choice-btn"><span class="choice-mark">C</span>カメラが映像を1本のひも状のデータに記録している</button>
+        <button class="choice-btn"><span class="choice-mark">D</span>色の変化を電気信号に変換して画面に送っている</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <!-- ===== SECTION 2: 画像差分法 ===== -->
+  <div class="section" id="sec2">
+    <div class="section-header">
+      <div class="step-badge">2</div>
+      <div>
+        <div class="section-title">動きをどうやって検出する？</div>
+        <div class="section-subtitle">画像差分法（がぞうさぶんほう）</div>
+      </div>
+    </div>
+    <div class="card">
+      <p>動いている場所を見つけるための技術が <span class="keyword-box">画像差分法</span> です。</p>
+      <p>考え方はとてもシンプルです。</p>
+    </div>
+    <div class="flow">
+      <div class="flow-step"><span class="num">1</span><span>1つ前のフレーム（静止画）を保存しておく</span></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><span class="num">2</span><span>現在のフレームを取得する</span></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><span class="num">3</span><span>2枚を同じ座標のピクセルごとに比較する（引き算）</span></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><span class="num">4</span><span>色の差が大きい場所 = 「動きがあった」と判定</span></div>
+    </div>
+    <div class="illust-wrap">
+      <div class="diff-row">
+        <div class="diff-cell">
+          <canvas id="diff-prev" class="diff-img" width="72" height="72"></canvas>
+          前のフレーム
+        </div>
+        <span class="diff-op">－</span>
+        <div class="diff-cell">
+          <canvas id="diff-curr" class="diff-img" width="72" height="72"></canvas>
+          今のフレーム
+        </div>
+        <span class="diff-op">＝</span>
+        <div class="diff-cell">
+          <canvas id="diff-out" class="diff-result" width="72" height="72"></canvas>
+          差分（動いた部分が光る）
+        </div>
+      </div>
+      <p>※「閾値（しきいち）」= 「どのくらいの差なら反応するか」の設定値。調整できます。</p>
+    </div>
+    <div class="highlight">
+      <strong>例えて言うと…</strong><br>
+      朝と夜に同じ場所を撮った写真を重ねると、変わった部分（人が入った・出た）が浮き上がります。これが画像差分法の考え方です。
+    </div>
+
+    <!-- Quiz 2 -->
+    <div class="quiz-wrap" id="quiz2">
+      <span class="quiz-label">Q U I Z &nbsp; 3</span>
+      <div class="quiz-q">画像差分法で「動き」を検出するしくみとして正しいのは？</div>
+      <div class="quiz-choices" data-correct="3">
+        <button class="choice-btn"><span class="choice-mark">A</span>カメラが赤外線を使って物体の形を調べる</button>
+        <button class="choice-btn"><span class="choice-mark">B</span>AIが人の姿を学習して自動で認識する</button>
+        <button class="choice-btn"><span class="choice-mark">C</span>マイクの音を分析して動きを判定する</button>
+        <button class="choice-btn"><span class="choice-mark">D</span>前のフレームと今のフレームのピクセルの色を比べて、差が大きい場所を「動いた」と判定する</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <!-- ===== SECTION 3: 図形を描く ===== -->
+  <div class="section" id="sec3">
+    <div class="section-header">
+      <div class="step-badge">3</div>
+      <div>
+        <div class="section-title">動きを見つけたら何をするの？</div>
+        <div class="section-subtitle">Canvas APIで図形を描画する</div>
+      </div>
+    </div>
+    <div class="card">
+      <p>動きが検出された座標（x, y）に、カラフルな図形を描きます。</p>
+      <p>JavaScriptには <span class="keyword-box">Canvas API</span> という機能があり、ブラウザ上に自由に絵が描けます。</p>
+    </div>
+    <div class="modes-grid">
+      <div class="mode-card">
+        <canvas id="mode1-canvas" width="150" height="100"></canvas>
+        <h4>Mode 1</h4>
+        <p>ランダムなサイズの<br>カラフルな円</p>
+        <span class="tag">正弦波（サイン波）</span>
+      </div>
+      <div class="mode-card">
+        <canvas id="mode2-canvas" width="150" height="100"></canvas>
+        <h4>Mode 2</h4>
+        <p>同じサイズ・同じ色<br>の均一な円</p>
+        <span class="tag">のこぎり波</span>
+      </div>
+      <div class="mode-card">
+        <canvas id="mode3-canvas" width="150" height="100"></canvas>
+        <h4>Mode 3</h4>
+        <p>ランダムな<br>ベジェ曲線</p>
+        <span class="tag">矩形波（くけいは）</span>
+      </div>
+    </div>
+    <div class="highlight">
+      <strong>「座標」とは？</strong><br>
+      画面の左上が (x=0, y=0)、右に行くほどxが増え、下に行くほどyが増えます。動きが検出された場所のx, y座標に図形を置くことで、「人の動きをなぞるような映像」が生まれます。
+    </div>
+    <div class="card">
+      <p>さらに、毎フレームごとに画面を少しだけ暗くすることで、図形が<strong>徐々に消えていく</strong>演出も作っています。</p>
+      <p style="font-family:monospace;font-size:13px;background:#0a0a14;padding:10px;border-radius:6px;margin-top:10px;">ctx.fillStyle = <span style="color:#ffd166">'rgba(0,0,0,0.06)'</span>;<br>ctx.fillRect(0, 0, width, height);</p>
+      <p style="margin-top:8px;font-size:14px;color:var(--muted)">↑ 黒色の透明度6%で毎フレーム塗ることで、前の絵が少しずつ消えていく</p>
+    </div>
+
+    <!-- Quiz 3 -->
+    <div class="quiz-wrap" id="quiz3">
+      <span class="quiz-label">Q U I Z &nbsp; 4</span>
+      <div class="quiz-q">毎フレームごとに「黒色の薄い半透明の膜」を画面全体に塗る目的は何？</div>
+      <div class="quiz-choices" data-correct="0">
+        <button class="choice-btn"><span class="choice-mark">A</span>以前に描いた図形を少しずつ消して、「徐々に消えていく」演出を作るため</button>
+        <button class="choice-btn"><span class="choice-mark">B</span>画面を暗くして見やすくするため</button>
+        <button class="choice-btn"><span class="choice-mark">C</span>カメラの映像を隠すため</button>
+        <button class="choice-btn"><span class="choice-mark">D</span>プログラムの処理速度を下げるため</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <!-- ===== SECTION 4: 音を生成する ===== -->
+  <div class="section" id="sec4">
+    <div class="section-header">
+      <div class="step-badge">4</div>
+      <div>
+        <div class="section-title">音も自動で作られる！</div>
+        <div class="section-subtitle">Web Audio API で音を生成する</div>
+      </div>
+    </div>
+    <div class="card">
+      <p>このアートは映像だけでなく、<strong>音も自動生成</strong>されます。</p>
+      <p>ブラウザには <span class="keyword-box">Web Audio API</span> という機能があり、プログラムで音を作ることができます。</p>
+    </div>
+    <div class="illust-wrap">
+      <svg width="400" height="120" viewBox="0 0 400 120" style="max-width:100%">
+        <!-- Screen with person outline -->
+        <rect x="10" y="10" width="120" height="90" rx="6" fill="#0a0a18" stroke="#3a3a6e" stroke-width="1.5"/>
+        <!-- Dots representing motion -->
+        <circle cx="55" cy="30" r="4" fill="rgba(108,99,255,0.8)"/>
+        <circle cx="60" cy="50" r="4" fill="rgba(108,99,255,0.8)"/>
+        <circle cx="65" cy="70" r="4" fill="rgba(255,101,132,0.8)"/>
+        <circle cx="70" cy="85" r="4" fill="rgba(255,101,132,0.8)"/>
+        <!-- Labels -->
+        <text x="100" y="32" fill="#43d39e" font-size="9">y=20 → 高い音</text>
+        <text x="100" y="72" fill="#ffd166" font-size="9">y=60 → 低い音</text>
+        <line x1="60" y1="30" x2="98" y2="30" stroke="#43d39e" stroke-dasharray="3,2" stroke-width="1"/>
+        <line x1="65" y1="70" x2="98" y2="70" stroke="#ffd166" stroke-dasharray="3,2" stroke-width="1"/>
+        <!-- Arrow -->
+        <path d="M135 55 L165 55" stroke="#6c63ff" stroke-width="2" marker-end="url(#arr3)"/>
+        <defs><marker id="arr3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6c63ff"/></marker></defs>
+        <!-- Wave icons -->
+        <!-- Sine -->
+        <text x="175" y="22" fill="#a88fff" font-size="9">Mode1: 正弦波</text>
+        <path d="M175 35 Q185 25 195 35 Q205 45 215 35" stroke="#6c63ff" stroke-width="2" fill="none"/>
+        <!-- Sawtooth -->
+        <text x="175" y="58" fill="#a88fff" font-size="9">Mode2: のこぎり波</text>
+        <path d="M175 72 L185 62 L185 72 L195 62 L195 72 L205 62 L205 72 L215 62" stroke="#ff6584" stroke-width="2" fill="none"/>
+        <!-- Square -->
+        <text x="175" y="94" fill="#a88fff" font-size="9">Mode3: 矩形波</text>
+        <path d="M175 108 L175 100 L190 100 L190 108 L205 108 L205 100 L220 100 L220 108" stroke="#ffd166" stroke-width="2" fill="none"/>
+      </svg>
+      <p>動きが検出された位置のy座標（上下）で音の高さが変わる</p>
+    </div>
+    <div class="highlight">
+      <strong>音の高さ（ピッチ）の決め方</strong><br>
+      画面の<strong>上部で動き → 高い音</strong>（ピアノの右側のような音）<br>
+      画面の<strong>下部で動き → 低い音</strong>（ピアノの左側のような音）<br><br>
+      モードごとに音の「波形」も変わります。正弦波はなめらか、矩形波はブザーのような音。
+    </div>
+
+    <!-- Quiz 4 -->
+    <div class="quiz-wrap" id="quiz4">
+      <span class="quiz-label">Q U I Z &nbsp; 5</span>
+      <div class="quiz-q">このアートで「音の高さ」はどうやって決まる？</div>
+      <div class="quiz-choices" data-correct="2">
+        <button class="choice-btn"><span class="choice-mark">A</span>動きが速いほど高い音が鳴る</button>
+        <button class="choice-btn"><span class="choice-mark">B</span>動いた人の身長で音が変わる</button>
+        <button class="choice-btn"><span class="choice-mark">C</span>動きを検出した位置が画面の上部ほど高い音、下部ほど低い音になる</button>
+        <button class="choice-btn"><span class="choice-mark">D</span>ランダムに音の高さが決まる</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <!-- ===== SECTION 5: Camo Studio とは ===== -->
+  <div class="section" id="sec5">
+    <div class="section-header">
+      <div class="step-badge">5</div>
+      <div>
+        <div class="section-title">なぜiPhoneを使えるの？</div>
+        <div class="section-subtitle">Camo Studio の仕組み</div>
+      </div>
+    </div>
+    <div class="card">
+      <p>普通のパソコンのWebカメラの代わりに、<strong>iPhoneの高画質カメラ</strong>を使いたい場合、そのままでは使えません。</p>
+      <p>そこで使うのが <span class="keyword-box">Camo Studio</span> というソフトです。</p>
+    </div>
+    <div class="illust-wrap">
+      <svg width="420" height="90" viewBox="0 0 420 90" style="max-width:100%">
+        <!-- iPhone -->
+        <rect x="10" y="10" width="50" height="70" rx="8" fill="#2a2a4e" stroke="#6c63ff" stroke-width="2"/>
+        <rect x="18" y="18" width="34" height="48" rx="4" fill="#1a1a3e"/>
+        <text x="35" y="47" text-anchor="middle" fill="#6c63ff" font-size="8">📷</text>
+        <text x="35" y="58" text-anchor="middle" fill="#888" font-size="7">高画質</text>
+        <text x="35" y="88" text-anchor="middle" fill="#888aaa" font-size="9">iPhone</text>
+        <!-- USB line -->
+        <line x1="63" y1="45" x2="105" y2="45" stroke="#888" stroke-width="2" stroke-dasharray="4,2"/>
+        <text x="84" y="38" text-anchor="middle" fill="#888" font-size="8">USB</text>
+        <!-- Camo box -->
+        <rect x="108" y="25" width="90" height="42" rx="8" fill="#1e1e3a" stroke="#a88fff" stroke-width="2"/>
+        <text x="153" y="44" text-anchor="middle" fill="#a88fff" font-size="10" font-weight="bold">Camo Studio</text>
+        <text x="153" y="57" text-anchor="middle" fill="#888" font-size="8">仮想Webカメラ化</text>
+        <text x="153" y="88" text-anchor="middle" fill="#888aaa" font-size="9">変換ソフト</text>
+        <!-- Arrow -->
+        <path d="M200 46 L235 46" stroke="#43d39e" stroke-width="2" marker-end="url(#arr4)"/>
+        <defs><marker id="arr4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#43d39e"/></marker></defs>
+        <!-- Browser -->
+        <rect x="238" y="15" width="80" height="60" rx="8" fill="#2a2a4e" stroke="#43d39e" stroke-width="2"/>
+        <rect x="244" y="22" width="68" height="44" rx="4" fill="#0a0a14"/>
+        <text x="278" y="44" text-anchor="middle" fill="#43d39e" font-size="8">普通の</text>
+        <text x="278" y="55" text-anchor="middle" fill="#43d39e" font-size="8">Webカメラとして</text>
+        <text x="278" y="65" text-anchor="middle" fill="#43d39e" font-size="8">認識される</text>
+        <text x="278" y="88" text-anchor="middle" fill="#888aaa" font-size="9">Chrome</text>
+        <!-- Arrow -->
+        <path d="M321 46 L350 46" stroke="#ffd166" stroke-width="2" marker-end="url(#arr5)"/>
+        <defs><marker id="arr5" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ffd166"/></marker></defs>
+        <!-- JS -->
+        <rect x="353" y="25" width="60" height="40" rx="8" fill="#1e1e3a" stroke="#ffd166" stroke-width="2"/>
+        <text x="383" y="49" text-anchor="middle" fill="#ffd166" font-size="10" font-weight="bold">JavaScript</text>
+        <text x="383" y="88" text-anchor="middle" fill="#888aaa" font-size="9">getUserMedia()</text>
+      </svg>
+      <p>Camo StudioがiPhoneを「普通のWebカメラ」に変換するので、JavaScriptから通常通り使える</p>
+    </div>
+    <div class="highlight">
+      <strong>JavaScriptのコード（1行）でカメラにアクセスできる</strong><br>
+      <span style="font-family:monospace;font-size:13px;color:#6c63ff">navigator.mediaDevices.getUserMedia({ video: true })</span><br><br>
+      このコードを実行すると「カメラの使用を許可しますか？」とブラウザが確認します。許可すると映像を取得できます。
+    </div>
+
+    <!-- Quiz 5 -->
+    <div class="quiz-wrap" id="quiz5">
+      <span class="quiz-label">Q U I Z &nbsp; 6</span>
+      <div class="quiz-q">Camo Studioの役割として正しいものはどれ？</div>
+      <div class="quiz-choices" data-correct="1">
+        <button class="choice-btn"><span class="choice-mark">A</span>iPhoneの画面をPCに表示するためのミラーリングアプリ</button>
+        <button class="choice-btn"><span class="choice-mark">B</span>iPhoneのカメラ映像を「仮想Webカメラ」としてPCに認識させ、ブラウザから使えるようにする</button>
+        <button class="choice-btn"><span class="choice-mark">C</span>カメラ映像をZoomやTeamsで使えるようにする録画ソフト</button>
+        <button class="choice-btn"><span class="choice-mark">D</span>iPhoneの写真をPCに転送するソフト</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <!-- ===== SECTION 6: 全体の流れ ===== -->
+  <div class="section" id="sec6">
+    <div class="section-header">
+      <div class="step-badge">6</div>
+      <div>
+        <div class="section-title">全部つなげると？</div>
+        <div class="section-subtitle">1フレームで起きていること</div>
+      </div>
+    </div>
+    <div class="card">
+      <p>プログラムは1秒間に約30回、以下の処理を繰り返しています。</p>
+    </div>
+    <div class="flow">
+      <div class="flow-step"><span class="num">①</span><span><strong>フレーム取得：</strong> Camo経由でiPhoneのカメラから現在の映像（1枚の画像）を取り込む</span></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><span class="num">②</span><span><strong>差分計算：</strong> 前のフレームと比べて、色が変わったピクセルの座標をリストアップする</span></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><span class="num">③</span><span><strong>描画：</strong> 動きがあった座標に、現在のモードに応じた図形（円 or 曲線）を描く</span></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><span class="num">④</span><span><strong>フェード：</strong> 画面全体に半透明の黒を重ねて、前の図形を少しずつ消す</span></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><span class="num">⑤</span><span><strong>音生成：</strong> ランダムなタイミングで、動きの位置に応じた高さの音を鳴らす</span></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step"><span class="num">⑥</span><span><strong>プロジェクター出力：</strong> ブラウザ画面をプロジェクターに全画面表示 → ①に戻る</span></div>
+    </div>
+    <div class="highlight">
+      <strong>1分ごとにモードが自動切替されます</strong><br>
+      Mode1（円・正弦波）→ Mode2（均一円・のこぎり波）→ Mode3（曲線・矩形波）→ Mode1 → …
+    </div>
+
+    <!-- Quiz 6 -->
+    <div class="quiz-wrap" id="quiz6">
+      <span class="quiz-label">Q U I Z &nbsp; 7</span>
+      <div class="quiz-q">このプログラムが1秒間に約30回繰り返している処理の順番として正しいものはどれ？</div>
+      <div class="quiz-choices" data-correct="3">
+        <button class="choice-btn"><span class="choice-mark">A</span>音生成 → 差分計算 → フレーム取得 → 描画</button>
+        <button class="choice-btn"><span class="choice-mark">B</span>描画 → フレーム取得 → 差分計算 → 音生成</button>
+        <button class="choice-btn"><span class="choice-mark">C</span>差分計算 → フレーム取得 → 音生成 → 描画</button>
+        <button class="choice-btn"><span class="choice-mark">D</span>フレーム取得 → 差分計算 → 描画 → フェード → 音生成</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <!-- ===== FINAL RESULT ===== -->
+  <div id="final-result">
+    <div style="font-size:48px;margin-bottom:8px">🎉</div>
+    <h2>全問チャレンジ完了！</h2>
+    <div id="final-score-big"></div>
+    <div id="final-comment"></div>
+    <div id="final-detail" style="color:var(--muted);font-size:13px;margin-bottom:20px;"></div>
+    <button class="restart-btn" onclick="restart()">もう一度挑戦する</button>
+  </div>
+
+</main>
+
+<script>
+// ===== Quiz Logic =====
+const EXPLANATIONS = [
+  { correct: '「インタラクティブ」は「対話的」という意味です。見る人の動きに反応してリアルタイムで映像が変わるアートです。', wrong: '画像差分法により、カメラの前の人の動きに合わせて映像・音が変化します。' },
+  { correct: 'パラパラ漫画と同じで、静止画（フレーム）を1秒間に約30枚切り替えることで動いて見えます。', wrong: '1秒間に約30枚の静止画（フレーム）を素早く切り替えることが動画の仕組みです。' },
+  { correct: '前後のフレームを比べてピクセルの色の差（差分）を計算します。AIも赤外線も使いません。', wrong: 'AIや赤外線ではなく、単純な「引き算」でピクセルの色の変化を比べます。' },
+  { correct: '黒の半透明を毎フレーム重ねると、古い図形が少しずつ薄くなって消えていく演出になります。', wrong: 'これは「フェードアウト効果」を作るためです。黒を薄く塗ることで以前の絵が消えていきます。' },
+  { correct: 'y座標（縦方向の位置）で音の高さが変わります。上部＝高音、下部＝低音です。', wrong: 'y座標（画面の縦位置）によって周波数（音の高さ）が決まります。' },
+  { correct: 'Camo StudioはiPhoneを仮想Webカメラとして認識させるソフトです。JavaScriptから普通のカメラとして使えます。', wrong: 'Camo Studioの役割は「仮想Webカメラ化」です。iPhoneを本物のWebカメラのようにPCに認識させます。' },
+  { correct: 'フレームを取得してから差分を計算し、図形を描き、音を鳴らす流れです。', wrong: 'フレーム取得→差分計算→描画→フェード→音生成の順番で処理が行われます。' },
+];
+
+let totalQuestions = 7;
+let answeredCount = 0;
+let correctCount = 0;
+const answeredQuizzes = new Set();
+
+function updateProgress() {
+  const pct = (answeredCount / totalQuestions) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `進捗：${answeredCount} / ${totalQuestions}`;
+  document.getElementById('score-display').textContent = `スコア：${correctCount} / ${answeredCount}`;
+  if (answeredCount === totalQuestions) {
+    setTimeout(showFinal, 800);
+  }
+}
+
+function showFinal() {
+  const el = document.getElementById('final-result');
+  el.style.display = 'block';
+  document.getElementById('final-score-big').textContent = `${correctCount} / ${totalQuestions}`;
+
+  let comment = '';
+  const pct = correctCount / totalQuestions;
+  if (pct === 1) comment = '完璧！インタラクティブアートの仕組みをマスターしました！';
+  else if (pct >= 0.7) comment = 'よくできました！ほぼ理解できています！';
+  else if (pct >= 0.5) comment = 'もう少し！わからなかった問題を読み返してみよう。';
+  else comment = '復習してもう一度チャレンジ！';
+
+  document.getElementById('final-comment').textContent = comment;
+  document.getElementById('final-detail').textContent = `正解数：${correctCount} 問　不正解：${totalQuestions - correctCount} 問`;
+
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (pct >= 0.7) launchConfetti();
+}
+
+function launchConfetti() {
+  const colors = ['#6c63ff','#ff6584','#ffd166','#43d39e','#a88fff','#ffffff'];
+  for (let i = 0; i < 60; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.style.cssText = `
+        left:${Math.random()*100}vw;
+        top:-20px;
+        background:${colors[Math.random()*colors.length|0]};
+        transform:rotate(${Math.random()*360}deg);
+        animation-duration:${1.5+Math.random()*2}s;
+        animation-delay:${Math.random()*0.5}s;
+      `;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }, i * 30);
+  }
+}
+
+function restart() {
+  answeredCount = 0;
+  correctCount = 0;
+  answeredQuizzes.clear();
+  updateProgress();
+  document.getElementById('final-result').style.display = 'none';
+
+  document.querySelectorAll('.quiz-wrap').forEach(wrap => {
+    wrap.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.disabled = false;
+      btn.classList.remove('correct', 'wrong');
+    });
+    wrap.querySelector('.quiz-feedback').style.display = 'none';
+    wrap.querySelector('.quiz-feedback').textContent = '';
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Attach quiz handlers
+document.querySelectorAll('.quiz-wrap').forEach((wrap, qIdx) => {
+  const choices = wrap.querySelectorAll('.choice-btn');
+  const feedback = wrap.querySelector('.quiz-feedback');
+  const correctIdx = parseInt(wrap.querySelector('.quiz-choices').dataset.correct);
+
+  choices.forEach((btn, bIdx) => {
+    btn.addEventListener('click', () => {
+      if (answeredQuizzes.has(qIdx)) return;
+      answeredQuizzes.add(qIdx);
+      answeredCount++;
+
+      const isCorrect = bIdx === correctIdx;
+      if (isCorrect) correctCount++;
+
+      choices.forEach((b, i) => {
+        b.disabled = true;
+        if (i === correctIdx) b.classList.add('correct');
+        else if (i === bIdx && !isCorrect) b.classList.add('wrong');
+      });
+
+      const exp = EXPLANATIONS[qIdx];
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        feedback.className = 'quiz-feedback correct-fb';
+        feedback.innerHTML = `<strong>✅ 正解！</strong>${exp.correct}`;
+      } else {
+        feedback.className = 'quiz-feedback wrong-fb';
+        feedback.innerHTML = `<strong>❌ 不正解</strong>${exp.wrong}`;
+      }
+      updateProgress();
+    });
+  });
+});
+
+// ===== Intersection Observer for section animations =====
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.section').forEach(s => observer.observe(s));
+
+// ===== Canvas Illustrations =====
+
+// Frame strip demo
+(function() {
+  const c = document.getElementById('frame-demo');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const frameCount = 8;
+  const fw = W / frameCount;
+  let t = 0;
+  function drawFrames() {
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < frameCount; i++) {
+      const phase = t - i * 0.3;
+      ctx.fillStyle = '#1a1a2e';
+      ctx.beginPath();
+      ctx.roundRect(i * fw + 2, 2, fw - 4, H - 4, 4);
+      ctx.fill();
+
+      // figure moving
+      const x = i * fw + fw / 2 + Math.sin(phase) * (fw * 0.2);
+      const y = H / 2;
+      ctx.fillStyle = `hsl(${240 + i * 20},80%,65%)`;
+      ctx.beginPath();
+      ctx.arc(x, y - 14, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x, y - 7);
+      ctx.lineTo(x, y + 12);
+      ctx.strokeStyle = `hsl(${240 + i * 20},80%,65%)`;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      // highlight current frame
+      if (i === Math.floor(t * 2) % frameCount) {
+        ctx.strokeStyle = 'rgba(108,99,255,0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(i * fw + 2, 2, fw - 4, H - 4, 4);
+        ctx.stroke();
+      }
+    }
+    // label
+    ctx.fillStyle = '#888aaa';
+    ctx.font = '10px monospace';
+    ctx.fillText('← 1秒間に約30フレーム流れる →', 10, H - 4);
+    t += 0.04;
+    requestAnimationFrame(drawFrames);
+  }
+  drawFrames();
+})();
+
+// Diff illustration
+(function() {
+  const prev = document.getElementById('diff-prev');
+  const curr = document.getElementById('diff-curr');
+  const out  = document.getElementById('diff-out');
+  if (!prev) return;
+  const pc = prev.getContext('2d');
+  const cc = curr.getContext('2d');
+  const oc = out.getContext('2d');
+  let t = 0;
+
+  function drawDiff() {
+    const W = 72, H = 72;
+    // Background scene
+    function drawBg(ctx) {
+      ctx.fillStyle = '#1a1a3e'; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = '#2a2a5e'; ctx.fillRect(0, H*0.7, W, H*0.3);
+    }
+    // Person at offset x
+    function drawPerson(ctx, x, col) {
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(x, 20, 8, 0, Math.PI*2); ctx.fill();
+      ctx.fillRect(x-4, 28, 8, 20);
+    }
+
+    drawBg(pc);
+    drawPerson(pc, 30, '#6c63ff');
+
+    const px = 30 + Math.sin(t) * 12;
+    drawBg(cc);
+    drawPerson(cc, px, '#6c63ff');
+
+    // Diff output
+    oc.fillStyle = '#000'; oc.fillRect(0,0,W,H);
+    const prevD = pc.getImageData(0,0,W,H);
+    const currD = cc.getImageData(0,0,W,H);
+    const outD  = oc.createImageData(W,H);
+    for (let i = 0; i < prevD.data.length; i+=4) {
+      const dr = Math.abs(currD.data[i]   - prevD.data[i]);
+      const dg = Math.abs(currD.data[i+1] - prevD.data[i+1]);
+      const db = Math.abs(currD.data[i+2] - prevD.data[i+2]);
+      const d  = (dr+dg+db)/3;
+      if (d > 20) {
+        outD.data[i]   = 108;
+        outD.data[i+1] = 99;
+        outD.data[i+2] = 255;
+        outD.data[i+3] = Math.min(255, d * 3);
+      } else {
+        outD.data[i+3] = 0;
+      }
+    }
+    oc.putImageData(outD, 0, 0);
+    t += 0.03;
+    requestAnimationFrame(drawDiff);
+  }
+  drawDiff();
+})();
+
+// Mode canvases
+(function() {
+  function animMode(id, drawFn) {
+    const c = document.getElementById(id);
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    const W = c.width, H = c.height;
+    ctx.fillStyle = '#0a0a14';
+    ctx.fillRect(0,0,W,H);
+    let pts = [];
+    let t = 0;
+
+    function genPoints() {
+      const x = W/2 + Math.sin(t * 1.3) * W*0.3 + (Math.random()-0.5)*20;
+      const y = H/2 + Math.cos(t * 0.9) * H*0.3 + (Math.random()-0.5)*20;
+      pts.push({x, y, life: 1});
+    }
+
+    function loop() {
+      ctx.fillStyle = 'rgba(0,0,0,0.05)';
+      ctx.fillRect(0,0,W,H);
+      if (Math.random() < 0.4) genPoints();
+      for (let i = pts.length-1; i >= 0; i--) {
+        const p = pts[i];
+        p.life -= 0.015;
+        if (p.life <= 0) { pts.splice(i,1); continue; }
+        ctx.globalAlpha = p.life;
+        drawFn(ctx, p);
+        ctx.globalAlpha = 1;
+      }
+      t += 0.05;
+      requestAnimationFrame(loop);
+    }
+    loop();
+  }
+
+  animMode('mode1-canvas', (ctx, p) => {
+    const r = 3 + Math.random()*14;
+    ctx.fillStyle = `hsl(${Math.random()*360},100%,60%)`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2); ctx.fill();
+  });
+
+  let m2hue = Math.random()*360;
+  animMode('mode2-canvas', (ctx, p) => {
+    ctx.fillStyle = `hsl(${m2hue},80%,60%)`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2); ctx.fill();
+  });
+
+  animMode('mode3-canvas', (ctx, p) => {
+    ctx.strokeStyle = `hsl(${Math.random()*360},100%,65%)`;
+    ctx.lineWidth = 1 + Math.random()*2;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    const sp = 40;
+    ctx.bezierCurveTo(
+      p.x+(Math.random()-.5)*sp, p.y+(Math.random()-.5)*sp,
+      p.x+(Math.random()-.5)*sp, p.y+(Math.random()-.5)*sp,
+      p.x+(Math.random()-.5)*sp*1.5, p.y+(Math.random()-.5)*sp*1.5
+    );
+    ctx.stroke();
+  });
+})();
+</script>
+</body>
+</html>
