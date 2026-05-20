@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Komorebi — 木漏れ日インタラクティブアート</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#000; overflow:hidden; font-family:monospace; }
+    #main-canvas { display:block; }
+
+    /* ---- Setup ---- */
+    #setup-screen {
+      position:fixed; inset:0; display:flex;
+      align-items:center; justify-content:center;
+      background:#000; z-index:100;
+    }
+    #setup-screen.hidden { display:none; }
+    .setup-box {
+      background:#080a06; border:1px solid #2a3a1a; border-radius:10px;
+      padding:32px; width:420px; color:#dde8cc;
+    }
+    .setup-box h1 { font-size:17px; margin-bottom:4px; color:#d4e8a0; }
+    .setup-box .sub { font-size:11px; color:#7a8a60; margin-bottom:22px; }
+    .form-group { margin-bottom:14px; }
+    .form-group label { display:block; font-size:11px; color:#8a9a70; margin-bottom:5px; }
+    select {
+      background:#0f1208; color:#cce8a8; border:1px solid #3a4a28;
+      padding:7px; border-radius:4px; font-size:13px; width:100%;
+    }
+    input[type=range] { width:100%; accent-color:#a8c860; cursor:pointer; }
+    .range-row { display:flex; align-items:center; gap:10px; }
+    .range-row input { flex:1; }
+    .range-val { width:36px; text-align:right; font-size:13px; color:#a8c860; }
+    .btn-perm {
+      width:100%; padding:12px; background:#1a2a0a; color:#b8d870;
+      border:1px solid #3a5a20; border-radius:6px;
+      font-size:14px; font-weight:bold; cursor:pointer;
+    }
+    .btn-perm:hover { background:#243614; }
+    .btn-start {
+      width:100%; padding:12px; margin-top:8px;
+      background:#2a4014; color:#c8e880; border:none; border-radius:6px;
+      font-size:15px; font-weight:bold; cursor:pointer;
+    }
+    .btn-start:hover { background:#3a5020; }
+    .error-msg { color:#f88; font-size:11px; margin-top:8px; display:none; }
+    .retry-btn {
+      margin-top:5px; background:#0f1208; color:#8a9a70; border:1px solid #3a4a28;
+      border-radius:4px; padding:4px 10px; font-size:11px; cursor:pointer;
+    }
+
+    /* ---- HUD ---- */
+    #hud {
+      position:fixed; top:0; left:0; right:0;
+      display:flex; align-items:flex-start; justify-content:space-between;
+      padding:10px 14px; pointer-events:none;
+      background:linear-gradient(to bottom,rgba(2,8,0,.6) 0%,transparent 100%);
+      transition:opacity .5s;
+    }
+    #hud.faded { opacity:0; }
+    .hud-left { color:#a8c860; font-size:11px; line-height:1.9; }
+    .hud-right { display:flex; gap:7px; pointer-events:all; }
+    .hud-btn {
+      background:rgba(20,40,0,.3); color:#a8c860;
+      border:1px solid rgba(120,180,40,.3); border-radius:4px;
+      padding:5px 11px; font-size:11px; cursor:pointer; font-family:monospace;
+    }
+    .hud-btn:hover { background:rgba(30,60,0,.5); }
+
+    #mode-badge {
+      position:fixed; bottom:18px; right:18px;
+      background:rgba(5,15,0,.75); color:#a8c860;
+      border:1px solid #3a5a20; border-radius:4px;
+      padding:5px 13px; font-size:12px; font-family:monospace;
+      pointer-events:none; transition:opacity .5s;
+    }
+    #mode-badge.faded { opacity:0; }
+
+    #thr-panel {
+      position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+      background:rgba(5,12,0,.9); border:1px solid #3a4a28; border-radius:8px;
+      padding:12px 18px; color:#cce8a8; font-size:11px; width:280px;
+      transition:opacity .5s;
+    }
+    #thr-panel.hidden { opacity:0; pointer-events:none; }
+    .thr-row { display:flex; align-items:center; gap:8px; margin-top:7px; }
+    .thr-row input { flex:1; accent-color:#a8c860; }
+    .thr-val { width:28px; text-align:right; color:#a8c860; }
+  </style>
+</head>
+<body>
+
+<!-- Setup Screen -->
+<div id="setup-screen">
+  <div class="setup-box">
+    <h1>木漏れ日 Komorebi</h1>
+    <div class="sub">Ambient Notifications for Calm Technology — 静かな光のインタラクティブアート</div>
+
+    <!-- STEP 1 -->
+    <div id="step-perm">
+      <p style="font-size:12px;color:#7a8a60;line-height:1.8;margin-bottom:16px">
+        動体を検出し、木漏れ日のような光のパッチが生まれます。<br>
+        穏やかに漂い消えていく光をお楽しみください。<br>
+        ボタンを押してカメラアクセスを許可してください。
+      </p>
+      <button class="btn-perm" id="btn-req">🌿 カメラへのアクセスを許可する</button>
+      <div class="error-msg" id="perm-err"></div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div id="step-set" style="display:none">
+      <div class="form-group">
+        <label>カメラ選択</label>
+        <select id="cam-sel"></select>
+        <button class="retry-btn" id="btn-retry">🔄 再取得</button>
+      </div>
+      <div class="form-group">
+        <label>動体感度（差分閾値）</label>
+        <div class="range-row">
+          <input type="range" id="thr-in" min="5" max="100" value="22">
+          <span class="range-val" id="thr-in-v">22</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>光のパッチ密度</label>
+        <div class="range-row">
+          <input type="range" id="density-in" min="1" max="10" value="5">
+          <span class="range-val" id="density-in-v">5</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>音を有効にする（穏やかなベル音）</label>
+        <select id="snd-sel">
+          <option value="1">有効</option>
+          <option value="0">無効</option>
+        </select>
+      </div>
+      <button class="btn-start" id="btn-start">▶ 開始</button>
+      <div class="error-msg" id="err-msg"></div>
+    </div>
+  </div>
+</div>
+
+<canvas id="main-canvas"></canvas>
+
+<div id="hud">
+  <div class="hud-left">
+    <div id="hud-fps">FPS: --</div>
+    <div id="hud-patches">光: --</div>
+  </div>
+  <div class="hud-right">
+    <button class="hud-btn" id="btn-thr">閾値調整</button>
+    <button class="hud-btn" id="btn-fs">全画面</button>
+    <button class="hud-btn" id="btn-back">設定</button>
+  </div>
+</div>
+<div id="mode-badge">木漏れ日 Komorebi</div>
+<div id="thr-panel" class="hidden">
+  <div>差分閾値（動体感度）</div>
+  <div class="thr-row">
+    <input type="range" id="thr-sl" min="5" max="100" value="22">
+    <span class="thr-val" id="thr-v">22</span>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+//  木漏れ日 Komorebi — インタラクティブアート
+//  論文「Komorebi-Mediated Ambient Notifications for Calm Technology」参考
+//  ・komorebi（木漏れ日）＝ 葉の間から差し込む太陽光
+//  ・動体検出 → 木漏れ日パッチが発生
+//  ・hard shadow（点光源的、輪郭くっきり）vs soft shadow（面光源、ぼんやり）
+//  ・パッチが穏やかに漂い、ゆっくり消える（Calm Technology）
+//  ・葉のシルエットが背景に散在
+//  ・加算合成（lighter）で光が重なって明るくなる
+// =====================================================================
+
+const canvas = document.getElementById('main-canvas');
+const ctx    = canvas.getContext('2d');
+const diff   = document.createElement('canvas');
+const dctx   = diff.getContext('2d', { willReadFrequently: true });
+const video  = document.createElement('video');
+video.autoplay = true; video.playsInline = true;
+
+let W=0, H=0;
+let threshold  = 22;
+let density    = 5;
+let soundEnabled = true;
+let audioCtx = null;
+let prevFrame = null;
+let patches   = [];         // KomorebiPatch[]
+let leaves    = [];         // static leaf silhouettes
+let frameCount = 0, lastFpsTime = performance.now(), fps = 0;
+let hudTimeout = null, thrPanelOpen = false;
+let lastSound  = 0;
+
+// ---- Komorebi Patch ----
+// paper: soft dappled light, hard vs soft shadow (umbra / penumbra)
+class KomorebiPatch {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    // paper: "shadow hardness" — ランダムにsoft/hardを決定
+    this.hard = Math.random() < 0.3;          // 30%: hard (point light source)
+    this.r    = this.hard
+                  ? 12 + Math.random() * 22   // hard: 小さく輪郭くっきり
+                  : 30 + Math.random() * 70;  // soft: 大きくぼんやり (penumbra)
+    this.opacity  = this.hard
+                      ? 0.55 + Math.random() * 0.3
+                      : 0.18 + Math.random() * 0.22;
+    // 光の色: 暖かい黄緑（葉越しの日光）
+    this.hue  = 55 + Math.random() * 25;      // 55-80度: 黄色〜黄緑
+    this.sat  = 70 + Math.random() * 30;
+    this.lit  = 78 + Math.random() * 20;
+    // 緩やかな漂い (paper: 光の位置が動く)
+    this.vx   = (Math.random() - 0.5) * 0.4;
+    this.vy   = Math.random() * 0.3 + 0.05;  // 下方向に少し流れる
+    this.life = 1.0;
+    this.decay = this.hard
+                   ? 0.012 + Math.random() * 0.012  // hard: やや早く消える
+                   : 0.005 + Math.random() * 0.008; // soft: ゆっくり消える
+    // 楕円の歪み (木漏れ日は完全な円ではない)
+    this.scaleX = 0.6 + Math.random() * 0.8;
+    this.scaleY = 0.5 + Math.random() * 0.7;
+    this.rot    = Math.random() * Math.PI;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.life -= this.decay;
+    // 緩やかな揺らぎ (paper: 風で揺れる葉による光の変化)
+    this.vx += (Math.random() - 0.5) * 0.04;
+    this.vx  = Math.max(-0.8, Math.min(0.8, this.vx));
+  }
+
+  draw(ctx) {
+    if (this.life <= 0) return;
+    const alpha = this.life * this.opacity;
+    const r = this.r;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+    ctx.scale(this.scaleX, this.scaleY);
+
+    // paper: hard shadow = distinct umbra, soft shadow = broad penumbra
+    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+    if (this.hard) {
+      // Hard: 中央が明るく、縁が急に消える (点光源の umbra)
+      grad.addColorStop(0,    `hsla(${this.hue},${this.sat}%,${this.lit}%,${alpha})`);
+      grad.addColorStop(0.65, `hsla(${this.hue},${this.sat}%,${this.lit-10}%,${alpha * 0.5})`);
+      grad.addColorStop(1,    `hsla(${this.hue},${this.sat}%,${this.lit}%,0)`);
+    } else {
+      // Soft: 広くぼんやり広がる (面光源の penumbra)
+      grad.addColorStop(0,    `hsla(${this.hue},${this.sat}%,${this.lit}%,${alpha})`);
+      grad.addColorStop(0.35, `hsla(${this.hue},${this.sat}%,${this.lit-5}%,${alpha * 0.6})`);
+      grad.addColorStop(0.7,  `hsla(${this.hue},${this.sat}%,${this.lit-15}%,${alpha * 0.2})`);
+      grad.addColorStop(1,    `hsla(${this.hue},${this.sat}%,${this.lit}%,0)`);
+    }
+
+    ctx.globalCompositeOperation = 'lighter'; // 加算合成 — 光が重なって明るくなる
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  get dead() { return this.life <= 0 || this.x < -200 || this.x > W+200 || this.y > H+200; }
+}
+
+// ---- Leaf Silhouettes (背景の葉のシルエット) ----
+function makeLeafPath(ctx, w, h) {
+  ctx.beginPath();
+  ctx.moveTo(w * 0.5, 0);
+  ctx.bezierCurveTo(w * 0.9, h * 0.1, w * 1.0, h * 0.5, w * 0.5, h);
+  ctx.bezierCurveTo(w * 0.0, h * 0.5, w * 0.1, h * 0.1, w * 0.5, 0);
+  ctx.closePath();
+}
+
+function generateLeaves() {
+  leaves = [];
+  const count = 25 + Math.floor(Math.random() * 20);
+  for (let i = 0; i < count; i++) {
+    const w = 30 + Math.random() * 80;
+    const h = w * (0.4 + Math.random() * 0.4);
+    const oc = document.createElement('canvas');
+    oc.width = w * 2; oc.height = h * 2;
+    const oc2d = oc.getContext('2d');
+    oc2d.save();
+    oc2d.translate(w * 0.5, h * 0.5);
+    oc2d.rotate(Math.random() * Math.PI);
+    oc2d.translate(-w * 0.5, -h * 0.5);
+    // 葉のシルエット: 濃い緑〜黒 (影として機能)
+    const leafHue = 90 + Math.random() * 50;
+    oc2d.fillStyle = `hsla(${leafHue},50%,8%,0.55)`;
+    makeLeafPath(oc2d, w, h);
+    oc2d.fill();
+    oc2d.restore();
+    leaves.push({
+      img: oc,
+      x: Math.random() * W,
+      y: Math.random() * H,
+      opacity: 0.3 + Math.random() * 0.35,
+    });
+  }
+}
+
+// ---- Setup Screen ----
+const setupScreen = document.getElementById('setup-screen');
+const camSel  = document.getElementById('cam-sel');
+const errMsg  = document.getElementById('err-msg');
+
+function showErr(msg) { errMsg.textContent = msg; errMsg.style.display='block'; }
+function showPermErr(msg) {
+  const el = document.getElementById('perm-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+async function populateCams() {
+  const devs = await navigator.mediaDevices.enumerateDevices();
+  const vids  = devs.filter(d => d.kind === 'videoinput');
+  camSel.innerHTML = '';
+  if (!vids.length) { camSel.innerHTML = '<option value="">カメラなし</option>'; return; }
+  vids.forEach((d, i) => {
+    const o = document.createElement('option');
+    o.value = d.deviceId;
+    const lbl = d.label || `カメラ ${i+1}`;
+    o.textContent = lbl;
+    if (lbl.toLowerCase().includes('camo')) o.selected = true;
+    camSel.appendChild(o);
+  });
+}
+
+document.getElementById('btn-req').addEventListener('click', async function () {
+  this.disabled = true; this.textContent = '許可を求めています...';
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showPermErr('カメラAPIが使えません。Chromeで http://localhost:8080 を開いてください。');
+    this.disabled = false; this.textContent = '🌿 カメラへのアクセスを許可する';
+    return;
+  }
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop());
+    await populateCams();
+    document.getElementById('step-perm').style.display = 'none';
+    document.getElementById('step-set').style.display  = 'block';
+  } catch(e) {
+    let m = 'カメラアクセスが拒否されました。';
+    if (e.name==='NotFoundError')    m = 'カメラが見つかりません。Camo Studioが起動しているか確認してください。';
+    if (e.name==='NotReadableError') m = 'カメラが他のアプリに使用中です。';
+    showPermErr(m + ' (' + e.name + ')');
+    this.disabled = false; this.textContent = '🌿 もう一度試す';
+  }
+});
+
+document.getElementById('btn-retry').addEventListener('click', async () => {
+  camSel.innerHTML = '<option>取得中...</option>';
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop());
+    await populateCams();
+  } catch(e) { showErr('再取得失敗: ' + e.message); }
+});
+
+document.getElementById('thr-in').addEventListener('input', function () {
+  document.getElementById('thr-in-v').textContent = this.value;
+});
+document.getElementById('density-in').addEventListener('input', function () {
+  document.getElementById('density-in-v').textContent = this.value;
+  density = parseInt(this.value);
+});
+
+document.getElementById('btn-start').addEventListener('click', async () => {
+  errMsg.style.display = 'none';
+  threshold    = parseInt(document.getElementById('thr-in').value);
+  density      = parseInt(document.getElementById('density-in').value);
+  soundEnabled = document.getElementById('snd-sel').value === '1';
+  if (!camSel.options.length) { showErr('カメラが見つかりません'); return; }
+
+  const btnS = document.getElementById('btn-start');
+  btnS.disabled = true; btnS.textContent = '接続中...';
+
+  const deviceId = camSel.value;
+  try {
+    const constraints = deviceId
+      ? { video: { deviceId:{exact:deviceId}, width:{ideal:1280}, height:{ideal:720} } }
+      : { video: { width:{ideal:1280}, height:{ideal:720} } };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = stream;
+    await new Promise(r => { video.onloadedmetadata = r; });
+    await video.play();
+    setupScreen.classList.add('hidden');
+    initArt();
+  } catch(e) {
+    let m = 'カメラ接続失敗: ' + e.message;
+    if (e.name==='NotReadableError') m = 'カメラが他のアプリに使用中です。Camo Studioを確認してください。';
+    showErr(m);
+    btnS.disabled = false; btnS.textContent = '▶ 開始';
+  }
+});
+
+// ---- HUD ----
+function showHud() {
+  document.getElementById('hud').classList.remove('faded');
+  clearTimeout(hudTimeout);
+  hudTimeout = setTimeout(() => {
+    document.getElementById('hud').classList.add('faded');
+    document.getElementById('mode-badge').classList.add('faded');
+  }, 4000);
+}
+document.addEventListener('mousemove', showHud);
+
+document.getElementById('btn-fs').addEventListener('click', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+document.getElementById('btn-back').addEventListener('click', () => {
+  prevFrame = null; patches = [];
+  errMsg.style.display = 'none';
+  document.getElementById('perm-err').style.display = 'none';
+  const b = document.getElementById('btn-req');
+  b.disabled = false; b.textContent = '🌿 カメラへのアクセスを許可する';
+  document.getElementById('step-perm').style.display = 'block';
+  document.getElementById('step-set').style.display  = 'none';
+  setupScreen.classList.remove('hidden');
+});
+document.getElementById('btn-thr').addEventListener('click', () => {
+  thrPanelOpen = !thrPanelOpen;
+  document.getElementById('thr-panel').classList.toggle('hidden', !thrPanelOpen);
+  document.getElementById('thr-sl').value = threshold;
+  document.getElementById('thr-v').textContent = threshold;
+});
+document.getElementById('thr-sl').addEventListener('input', e => {
+  threshold = parseInt(e.target.value);
+  document.getElementById('thr-v').textContent = threshold;
+});
+document.addEventListener('keydown', e => {
+  if (e.key==='f'||e.key==='F') document.getElementById('btn-fs').click();
+  if (e.key==='t'||e.key==='T') document.getElementById('btn-thr').click();
+  if (e.key==='s'||e.key==='S') { soundEnabled=!soundEnabled; }
+});
+
+// ---- Audio (穏やかなベル音 — Calm Technology) ----
+function initAudio() { if (!audioCtx) audioCtx = new AudioContext(); }
+
+function playBell(y) {
+  if (!soundEnabled || !audioCtx || audioCtx.state !== 'running') return;
+  const now  = audioCtx.currentTime;
+  // 木漏れ日: 高めで穏やかな鐘の音 (上部=高い、下部=低い)
+  const freq = 700 - (y / H) * 350;
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = 'sine'; osc.frequency.value = freq;
+  // ゆっくりと消えていくベル音 (paper: 穏やかな通知)
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.035, now + 0.03);   // slow attack
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 1.6); // long decay
+  osc.start(now); osc.stop(now + 1.6);
+  // 倍音 (より鐘らしく)
+  const osc2 = audioCtx.createOscillator();
+  const g2   = audioCtx.createGain();
+  osc2.connect(g2); g2.connect(audioCtx.destination);
+  osc2.type = 'sine'; osc2.frequency.value = freq * 2.76;
+  g2.gain.setValueAtTime(0, now);
+  g2.gain.linearRampToValueAtTime(0.01, now + 0.03);
+  g2.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+  osc2.start(now); osc2.stop(now + 0.8);
+}
+
+// ---- Resize ----
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  diff.width = W; diff.height = H;
+  prevFrame = null;
+}
+window.addEventListener('resize', resize);
+
+// ---- Frame Differencing ----
+function detectMotion() {
+  if (video.readyState < 2) return [];
+  dctx.save();
+  dctx.translate(W, 0); dctx.scale(-1, 1);
+  dctx.drawImage(video, 0, 0, W, H);
+  dctx.restore();
+  const cur = dctx.getImageData(0, 0, W, H);
+  const pts = [];
+  if (prevFrame) {
+    const c = cur.data, p = prevFrame.data;
+    const step = 8;
+    for (let y = 0; y < H; y += step) {
+      for (let x = 0; x < W; x += step) {
+        const i = (y * W + x) * 4;
+        const d = (Math.abs(c[i]-p[i]) + Math.abs(c[i+1]-p[i+1]) + Math.abs(c[i+2]-p[i+2])) / 3;
+        if (d > threshold) pts.push({ x, y });
+      }
+    }
+  }
+  prevFrame = cur;
+  return pts;
+}
+
+// ---- Render ----
+// 森の背景: 暗い緑がかった空間
+function drawBackground() {
+  // Very slow fade (paper: calm, unobtrusive — 残像がゆっくり消える)
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(1, 6, 1, 0.03)';
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawLeaves() {
+  // 葉のシルエット (背景装飾 — 光の手前に重なることで木漏れ日らしさを強調)
+  ctx.globalCompositeOperation = 'source-over';
+  for (const leaf of leaves) {
+    ctx.globalAlpha = leaf.opacity;
+    ctx.drawImage(leaf.img, leaf.x - leaf.img.width/2, leaf.y - leaf.img.height/2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---- Main Loop ----
+function loop() {
+  requestAnimationFrame(loop);
+
+  const motion = detectMotion();
+
+  drawBackground();
+
+  // 動体検出 → 木漏れ日パッチを生成
+  const spawnRate = Math.min(1, (density * 12) / Math.max(1, motion.length));
+  for (const pt of motion) {
+    if (Math.random() < spawnRate) {
+      patches.push(new KomorebiPatch(pt.x, pt.y));
+      // 密度設定に応じて周辺にも散らす (paper: dappled = まだらに散らばる)
+      if (density >= 4 && Math.random() < 0.4) {
+        patches.push(new KomorebiPatch(
+          pt.x + (Math.random() - 0.5) * 60,
+          pt.y + (Math.random() - 0.5) * 60
+        ));
+      }
+    }
+  }
+
+  // パッチ更新・描画
+  for (const p of patches) p.update();
+  for (const p of patches) p.draw(ctx);
+  patches = patches.filter(p => !p.dead);
+
+  // 最大パッチ数を制限
+  if (patches.length > 300) patches.splice(0, patches.length - 300);
+
+  // 葉のシルエットを光の上に重ねる
+  drawLeaves();
+
+  // Sound (穏やかに、間隔を置いて)
+  const now = performance.now();
+  if (motion.length > 3 && now - lastSound > 500 && Math.random() < 0.4) {
+    const pt = motion[Math.floor(Math.random() * motion.length)];
+    playBell(pt.y);
+    lastSound = now;
+  }
+
+  // FPS
+  frameCount++;
+  const now2 = performance.now();
+  if (now2 - lastFpsTime > 1000) {
+    fps = (frameCount * 1000 / (now2 - lastFpsTime)) | 0;
+    frameCount = 0; lastFpsTime = now2;
+    document.getElementById('hud-fps').textContent    = `FPS: ${fps}`;
+    document.getElementById('hud-patches').textContent = `光: ${patches.length}`;
+  }
+}
+
+function initArt() {
+  initAudio();
+  resize();
+
+  // 深い森の背景で初期化
+  ctx.fillStyle = '#010601';
+  ctx.fillRect(0, 0, W, H);
+
+  generateLeaves();
+  showHud();
+  loop();
+}
+</script>
+</body>
+</html>

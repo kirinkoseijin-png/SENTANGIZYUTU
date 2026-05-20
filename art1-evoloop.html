@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Living Surfaces — Evoloop インタラクティブアート</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#000; overflow:hidden; font-family:monospace; }
+    #main-canvas { display:block; }
+
+    /* ---- Setup ---- */
+    #setup-screen {
+      position:fixed; inset:0; display:flex;
+      align-items:center; justify-content:center;
+      background:#000; z-index:100;
+    }
+    #setup-screen.hidden { display:none; }
+    .setup-box {
+      background:#0a0a0a; border:1px solid #1a3a1a; border-radius:10px;
+      padding:32px; width:420px; color:#cec;
+    }
+    .setup-box h1 { font-size:17px; margin-bottom:6px; color:#6f6; }
+    .setup-box .sub { font-size:11px; color:#484; margin-bottom:22px; }
+    .form-group { margin-bottom:14px; }
+    .form-group label { display:block; font-size:11px; color:#686; margin-bottom:5px; }
+    .form-group select, .form-group input[type=range] { width:100%; }
+    select {
+      background:#111; color:#cec; border:1px solid #2a4a2a;
+      padding:7px; border-radius:4px; font-size:13px;
+    }
+    input[type=range] { accent-color:#4f4; cursor:pointer; }
+    .range-row { display:flex; align-items:center; gap:10px; }
+    .range-row input { flex:1; }
+    .range-val { width:36px; text-align:right; font-size:13px; color:#4f4; }
+    .btn-perm {
+      width:100%; padding:12px; background:#1a4a1a; color:#6f6;
+      border:1px solid #3a6a3a; border-radius:6px;
+      font-size:14px; font-weight:bold; cursor:pointer;
+    }
+    .btn-perm:hover { background:#2a5a2a; }
+    .btn-start {
+      width:100%; padding:12px; margin-top:8px;
+      background:#2a6a2a; color:#0f0; border:none; border-radius:6px;
+      font-size:15px; font-weight:bold; cursor:pointer;
+    }
+    .btn-start:hover { background:#3a7a3a; }
+    .error-msg { color:#f66; font-size:11px; margin-top:8px; display:none; }
+    .retry-btn {
+      margin-top:5px; background:#111; color:#686; border:1px solid #2a4a2a;
+      border-radius:4px; padding:4px 10px; font-size:11px; cursor:pointer;
+    }
+
+    /* ---- HUD ---- */
+    #hud {
+      position:fixed; top:0; left:0; right:0;
+      display:flex; align-items:flex-start; justify-content:space-between;
+      padding:10px 14px; pointer-events:none;
+      background:linear-gradient(to bottom,rgba(0,10,0,.6) 0%,transparent 100%);
+      transition:opacity .5s;
+    }
+    #hud.faded { opacity:0; }
+    .hud-left { color:#4f4; font-size:11px; line-height:1.9; }
+    .hud-right { display:flex; gap:7px; pointer-events:all; }
+    .hud-btn {
+      background:rgba(0,80,0,.25); color:#4f4;
+      border:1px solid rgba(0,180,0,.3); border-radius:4px;
+      padding:5px 11px; font-size:11px; cursor:pointer; font-family:monospace;
+    }
+    .hud-btn:hover { background:rgba(0,100,0,.4); }
+
+    #mode-badge {
+      position:fixed; bottom:18px; right:18px;
+      background:rgba(0,20,0,.7); color:#4f4;
+      border:1px solid #2a6a2a; border-radius:4px;
+      padding:5px 13px; font-size:12px; font-family:monospace;
+      pointer-events:none; transition:opacity .5s;
+    }
+    #mode-badge.faded { opacity:0; }
+
+    #thr-panel {
+      position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+      background:rgba(0,15,0,.85); border:1px solid #2a4a2a; border-radius:8px;
+      padding:12px 18px; color:#cec; font-size:11px; width:280px;
+      transition:opacity .5s;
+    }
+    #thr-panel.hidden { opacity:0; pointer-events:none; }
+    .thr-row { display:flex; align-items:center; gap:8px; margin-top:7px; }
+    .thr-row input { flex:1; accent-color:#4f4; }
+    .thr-val { width:28px; text-align:right; color:#4f4; }
+  </style>
+</head>
+<body>
+
+<!-- Setup Screen -->
+<div id="setup-screen">
+  <div class="setup-box">
+    <h1>Living Surfaces</h1>
+    <div class="sub">Evoloop を用いた動的テクスチャ — 「生きている表面」より</div>
+
+    <!-- STEP 1 -->
+    <div id="step-perm">
+      <p style="font-size:12px;color:#686;line-height:1.8;margin-bottom:16px">
+        カメラ映像の動体を検出し、セルが自己複製・衝突・消滅します。<br>
+        ボタンを押してカメラアクセスを許可してください。
+      </p>
+      <button class="btn-perm" id="btn-req">🔬 カメラへのアクセスを許可する</button>
+      <div class="error-msg" id="perm-err"></div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div id="step-set" style="display:none">
+      <div class="form-group">
+        <label>カメラ選択</label>
+        <select id="cam-sel"></select>
+        <button class="retry-btn" id="btn-retry">🔄 再取得</button>
+      </div>
+      <div class="form-group">
+        <label>動体感度（差分閾値）</label>
+        <div class="range-row">
+          <input type="range" id="thr-in" min="5" max="100" value="25">
+          <span class="range-val" id="thr-in-v">25</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>セル増殖速度</label>
+        <div class="range-row">
+          <input type="range" id="rep-in" min="1" max="10" value="4">
+          <span class="range-val" id="rep-in-v">4</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>音を有効にする</label>
+        <select id="snd-sel">
+          <option value="1">有効</option>
+          <option value="0">無効</option>
+        </select>
+      </div>
+      <button class="btn-start" id="btn-start">▶ 開始</button>
+      <div class="error-msg" id="err-msg"></div>
+    </div>
+  </div>
+</div>
+
+<canvas id="main-canvas"></canvas>
+
+<div id="hud">
+  <div class="hud-left">
+    <div id="hud-fps">FPS: --</div>
+    <div id="hud-cells">セル: --</div>
+  </div>
+  <div class="hud-right">
+    <button class="hud-btn" id="btn-thr">閾値調整</button>
+    <button class="hud-btn" id="btn-fs">全画面</button>
+    <button class="hud-btn" id="btn-back">設定</button>
+  </div>
+</div>
+<div id="mode-badge">Living Surfaces — Evoloop</div>
+<div id="thr-panel" class="hidden">
+  <div>差分閾値（動体感度）</div>
+  <div class="thr-row">
+    <input type="range" id="thr-sl" min="5" max="100" value="25">
+    <span class="thr-val" id="thr-v">25</span>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+//  Living Surfaces — Evoloop インタラクティブアート
+//  論文「生きている表面 — Evoloop を用いた動的テクスチャ」参考
+//  ・セルラオートマタによる自己複製・衝突・消滅
+//  ・動体検出エリア = 密集空間（激しい明滅）
+//  ・静止エリア = 進化空間（緩やかに自己複製・縮小）
+//  ・セルの振動、消滅跡の残留、フォグ効果（ブラー）
+// =====================================================================
+
+const canvas = document.getElementById('main-canvas');
+const ctx    = canvas.getContext('2d');
+const diff   = document.createElement('canvas');
+const dctx   = diff.getContext('2d', { willReadFrequently: true });
+const video  = document.createElement('video');
+video.autoplay = true; video.playsInline = true;
+
+let W=0, H=0, cellW=0, cellH=0;
+let COLS=0, ROWS=0;
+let grid = [];          // cell states
+let threshold = 25;
+let repRate   = 4;      // replication interval (frames)
+let soundEnabled = true;
+let audioCtx = null;
+let prevFrame = null;
+let activeCells = 0;
+let baseHue = 100;      // green base hue
+let frameCount = 0, lastFpsTime = performance.now(), fps = 0;
+let hudTimeout = null, thrPanelOpen = false;
+let modeTimer = null;
+
+// ---- Cell states ----
+// 0=empty, 1=alive, 2=dying
+const CELL_EMPTY = 0, CELL_ALIVE = 1, CELL_DYING = 2;
+
+function initGrid() {
+  COLS = Math.floor(W / 10);
+  ROWS = Math.floor(H / 10);
+  cellW = W / COLS;
+  cellH = H / ROWS;
+  grid = new Array(COLS * ROWS).fill(null).map(() => ({
+    state: 0, age: 0, hue: 0, vib: 0, vibAmp: 0, energy: 0,
+  }));
+}
+
+function gIdx(cx, cy) { return cy * COLS + cx; }
+
+function toCell(px, py) {
+  return {
+    cx: Math.min(COLS - 1, Math.max(0, Math.floor(px / cellW))),
+    cy: Math.min(ROWS - 1, Math.max(0, Math.floor(py / cellH))),
+  };
+}
+
+// ---- Setup Screen ----
+
+const setupScreen = document.getElementById('setup-screen');
+const camSel  = document.getElementById('cam-sel');
+const errMsg  = document.getElementById('err-msg');
+
+function showErr(msg) { errMsg.textContent = msg; errMsg.style.display='block'; }
+function showPermErr(msg) {
+  const el = document.getElementById('perm-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+async function populateCams() {
+  const devs = await navigator.mediaDevices.enumerateDevices();
+  const vids = devs.filter(d => d.kind === 'videoinput');
+  camSel.innerHTML = '';
+  if (!vids.length) { camSel.innerHTML = '<option value="">カメラなし</option>'; return; }
+  vids.forEach((d, i) => {
+    const o = document.createElement('option');
+    o.value = d.deviceId;
+    const lbl = d.label || `カメラ ${i+1}`;
+    o.textContent = lbl;
+    if (lbl.toLowerCase().includes('camo')) o.selected = true;
+    camSel.appendChild(o);
+  });
+}
+
+document.getElementById('btn-req').addEventListener('click', async function () {
+  this.disabled = true; this.textContent = '許可を求めています...';
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showPermErr('カメラAPIが使えません。Chromeで http://localhost:8080 を開いてください。');
+    this.disabled = false; this.textContent = '🔬 カメラへのアクセスを許可する';
+    return;
+  }
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop());
+    await populateCams();
+    document.getElementById('step-perm').style.display = 'none';
+    document.getElementById('step-set').style.display  = 'block';
+  } catch(e) {
+    let m = 'カメラアクセスが拒否されました。';
+    if (e.name==='NotFoundError')   m = 'カメラが見つかりません。Camo Studioが起動しているか確認してください。';
+    if (e.name==='NotReadableError') m = 'カメラが他のアプリに使用中です。';
+    showPermErr(m + ' (' + e.name + ')');
+    this.disabled = false; this.textContent = '🔬 もう一度試す';
+  }
+});
+
+document.getElementById('btn-retry').addEventListener('click', async () => {
+  camSel.innerHTML = '<option>取得中...</option>';
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop());
+    await populateCams();
+  } catch(e) { showErr('カメラ再取得失敗: ' + e.message); }
+});
+
+document.getElementById('thr-in').addEventListener('input', function () {
+  document.getElementById('thr-in-v').textContent = this.value;
+});
+document.getElementById('rep-in').addEventListener('input', function () {
+  document.getElementById('rep-in-v').textContent = this.value;
+  repRate = parseInt(this.value);
+});
+
+document.getElementById('btn-start').addEventListener('click', async () => {
+  errMsg.style.display = 'none';
+  threshold = parseInt(document.getElementById('thr-in').value);
+  repRate   = parseInt(document.getElementById('rep-in').value);
+  soundEnabled = document.getElementById('snd-sel').value === '1';
+  if (!camSel.options.length) { showErr('カメラが見つかりません'); return; }
+
+  const btnS = document.getElementById('btn-start');
+  btnS.disabled = true; btnS.textContent = '接続中...';
+
+  const deviceId = camSel.value;
+  try {
+    const constraints = deviceId
+      ? { video: { deviceId: { exact: deviceId }, width:{ideal:1280}, height:{ideal:720} } }
+      : { video: { width:{ideal:1280}, height:{ideal:720} } };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = stream;
+    await new Promise(r => { video.onloadedmetadata = r; });
+    await video.play();
+    setupScreen.classList.add('hidden');
+    initArt();
+  } catch(e) {
+    let m = 'カメラ接続失敗: ' + e.message;
+    if (e.name==='NotReadableError') m = 'カメラが他のアプリに使用中です。Camo Studioの接続を確認してください。';
+    showErr(m);
+    btnS.disabled = false; btnS.textContent = '▶ 開始';
+  }
+});
+
+// ---- HUD ----
+function showHud() {
+  document.getElementById('hud').classList.remove('faded');
+  clearTimeout(hudTimeout);
+  hudTimeout = setTimeout(() => {
+    document.getElementById('hud').classList.add('faded');
+    document.getElementById('mode-badge').classList.add('faded');
+  }, 4000);
+}
+document.addEventListener('mousemove', showHud);
+
+document.getElementById('btn-fs').addEventListener('click', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+
+document.getElementById('btn-back').addEventListener('click', () => {
+  prevFrame = null;
+  errMsg.style.display = 'none';
+  document.getElementById('perm-err').style.display = 'none';
+  const btnR = document.getElementById('btn-req');
+  btnR.disabled = false; btnR.textContent = '🔬 カメラへのアクセスを許可する';
+  document.getElementById('step-perm').style.display = 'block';
+  document.getElementById('step-set').style.display  = 'none';
+  setupScreen.classList.remove('hidden');
+});
+
+document.getElementById('btn-thr').addEventListener('click', () => {
+  thrPanelOpen = !thrPanelOpen;
+  document.getElementById('thr-panel').classList.toggle('hidden', !thrPanelOpen);
+  document.getElementById('thr-sl').value = threshold;
+  document.getElementById('thr-v').textContent = threshold;
+});
+
+document.getElementById('thr-sl').addEventListener('input', e => {
+  threshold = parseInt(e.target.value);
+  document.getElementById('thr-v').textContent = threshold;
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key==='f'||e.key==='F') document.getElementById('btn-fs').click();
+  if (e.key==='t'||e.key==='T') document.getElementById('btn-thr').click();
+  if (e.key==='s'||e.key==='S') { soundEnabled=!soundEnabled; }
+});
+
+// ---- Audio ----
+function initAudio() { if (!audioCtx) audioCtx = new AudioContext(); }
+
+function playCell(y) {
+  if (!soundEnabled || !audioCtx || audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+  const freq = 800 - (y / H) * 600; // higher = top of screen
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  // FM modulation for organic feel
+  const mod  = audioCtx.createOscillator();
+  const modG = audioCtx.createGain();
+  mod.frequency.value = 3 + Math.random() * 5;
+  modG.gain.value = freq * 0.05;
+  mod.connect(modG); modG.connect(osc.frequency);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = 'sine'; osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.04, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+  mod.start(now); mod.stop(now + 0.2);
+  osc.start(now); osc.stop(now + 0.2);
+}
+
+// ---- Resize ----
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  diff.width = W; diff.height = H;
+  if (grid.length > 0) initGrid(); // re-init on resize
+  prevFrame = null;
+}
+window.addEventListener('resize', resize);
+
+// ---- Frame Differencing ----
+function detectMotion() {
+  if (video.readyState < 2) return [];
+  dctx.save();
+  dctx.translate(W, 0); dctx.scale(-1, 1);
+  dctx.drawImage(video, 0, 0, W, H);
+  dctx.restore();
+  const cur = dctx.getImageData(0, 0, W, H);
+  const pts = [];
+  if (prevFrame) {
+    const c = cur.data, p = prevFrame.data;
+    const step = 8;
+    for (let y = 0; y < H; y += step) {
+      for (let x = 0; x < W; x += step) {
+        const i = (y * W + x) * 4;
+        const d = (Math.abs(c[i]-p[i]) + Math.abs(c[i+1]-p[i+1]) + Math.abs(c[i+2]-p[i+2])) / 3;
+        if (d > threshold) pts.push({ x, y });
+      }
+    }
+  }
+  prevFrame = cur;
+  return pts;
+}
+
+// ---- Evoloop Cell Simulation ----
+let lastSound = 0;
+
+function updateCells(motionPts) {
+  baseHue += 0.08; // slow color cycle (paper: 定期的に描画色を変更)
+  if (baseHue > 360) baseHue -= 360;
+
+  // Plant seeds at motion points (paper: スペースAに位置を乱数で決定し次々発生)
+  const seedRate = Math.min(1, 80 / Math.max(1, motionPts.length));
+  for (const pt of motionPts) {
+    if (Math.random() > seedRate) continue;
+    const { cx, cy } = toCell(pt.x, pt.y);
+    // Dense seeding in motion area → rapid collision & flickering
+    for (let di = -1; di <= 1; di++) {
+      for (let dj = -1; dj <= 1; dj++) {
+        if (Math.random() < 0.35) {
+          const nx = cx + di, ny = cy + dj;
+          if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+          const cell = grid[gIdx(nx, ny)];
+          if (cell.state === CELL_EMPTY) {
+            cell.state   = CELL_ALIVE;
+            cell.age     = 0;
+            cell.hue     = baseHue + (Math.random() - 0.5) * 60;
+            cell.vib     = Math.random() * Math.PI * 2;
+            cell.vibAmp  = 1.5 + Math.random() * 2.5;
+            cell.energy  = 1;
+          }
+        }
+      }
+    }
+  }
+
+  activeCells = 0;
+  const newReplications = [];
+
+  for (let cy = 0; cy < ROWS; cy++) {
+    for (let cx = 0; cx < COLS; cx++) {
+      const cell = grid[gIdx(cx, cy)];
+      if (cell.state === CELL_EMPTY) continue;
+
+      cell.age++;
+      cell.vib += 0.25 + Math.random() * 0.1; // vibration phase
+
+      if (cell.state === CELL_ALIVE) {
+        activeCells++;
+        // Self-replication attempt (paper: 自己複製)
+        if (cell.age % repRate === 0 && Math.random() < 0.4) {
+          const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,1],[-1,1],[1,-1]];
+          const [dx, dy] = dirs[Math.floor(Math.random() * dirs.length)];
+          const nx = cx + dx, ny = cy + dy;
+          if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+            const nb = grid[gIdx(nx, ny)];
+            if (nb.state === CELL_EMPTY) {
+              newReplications.push({ nx, ny, hue: cell.hue + (Math.random()-0.5)*30 });
+            } else if (nb.state === CELL_ALIVE) {
+              // Collision → both may die (paper: 衝突して消滅)
+              if (Math.random() < 0.6) {
+                cell.state = CELL_DYING; cell.age = 0;
+                if (Math.random() < 0.5) { nb.state = CELL_DYING; nb.age = 0; }
+              }
+            }
+          }
+        }
+        // Max age → start dying (paper: 進化して個体が小さくなる = ここでは寿命)
+        const maxAge = 80 + Math.floor(Math.random() * 40);
+        if (cell.age > maxAge) { cell.state = CELL_DYING; cell.age = 0; }
+
+      } else if (cell.state === CELL_DYING) {
+        if (cell.age > 18) { cell.state = CELL_EMPTY; cell.age = 0; }
+      }
+    }
+  }
+
+  // Apply replications
+  for (const r of newReplications) {
+    const c = grid[gIdx(r.nx, r.ny)];
+    if (c.state === CELL_EMPTY) {
+      c.state = CELL_ALIVE; c.age = 0;
+      c.hue = r.hue; c.vib = Math.random()*Math.PI*2;
+      c.vibAmp = 1 + Math.random() * 2; c.energy = 1;
+    }
+  }
+}
+
+// ---- Render ----
+// Use offscreen canvas for blur (paper: フォグ効果)
+const blurCanvas  = document.createElement('canvas');
+const blurCtx     = blurCanvas.getContext('2d');
+
+function render(motionPts) {
+  // Fade background — dead cells leave color trace (paper: 消滅した跡をバックグラウンドカラーとして残す)
+  ctx.fillStyle = 'rgba(0,5,2,0.04)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Render alive cells
+  for (let cy = 0; cy < ROWS; cy++) {
+    for (let cx = 0; cx < COLS; cx++) {
+      const cell = grid[gIdx(cx, cy)];
+      if (cell.state === CELL_EMPTY) continue;
+
+      // Vibration offset (paper: セルをスクリーン表面に対し垂直の方向に振動させ)
+      const vx = Math.sin(cell.vib) * cell.vibAmp;
+      const vy = Math.cos(cell.vib * 0.7) * cell.vibAmp;
+
+      let alpha;
+      if (cell.state === CELL_DYING) {
+        alpha = Math.max(0, 1 - cell.age / 18) * 0.85;
+        // Dampen vibration as dying (paper: 個体が死ぬときには減衰させ)
+        cell.vibAmp = Math.max(0, cell.vibAmp - 0.1);
+      } else {
+        alpha = 0.82;
+      }
+
+      ctx.fillStyle = `hsla(${cell.hue|0},100%,62%,${alpha})`;
+      ctx.fillRect(
+        cx * cellW + vx,
+        cy * cellH + vy,
+        cellW - 0.8,
+        cellH - 0.8
+      );
+    }
+  }
+
+  // Draw fog/blur overlay (paper: フォグ効果を利用してぼやけた風合いを持たせた)
+  // Apply a subtle blur by drawing the main canvas to blurCanvas with filter
+  if (frameCount % 6 === 0) {
+    blurCanvas.width = W; blurCanvas.height = H;
+    blurCtx.filter = 'blur(1.2px)';
+    blurCtx.drawImage(canvas, 0, 0);
+    blurCtx.filter = 'none';
+    ctx.globalAlpha = 0.18;
+    ctx.drawImage(blurCanvas, 0, 0);
+    ctx.globalAlpha = 1;
+  }
+
+  // Sound when many cells are born
+  const now = performance.now();
+  if (motionPts.length > 5 && now - lastSound > 90 && Math.random() < 0.3) {
+    const pt = motionPts[Math.floor(Math.random() * motionPts.length)];
+    playCell(pt.y);
+    lastSound = now;
+  }
+}
+
+// ---- Main Loop ----
+function loop() {
+  requestAnimationFrame(loop);
+  const motion = detectMotion();
+  updateCells(motion);
+  render(motion);
+
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsTime > 1000) {
+    fps = (frameCount * 1000 / (now - lastFpsTime)) | 0;
+    frameCount = 0; lastFpsTime = now;
+    document.getElementById('hud-fps').textContent   = `FPS: ${fps}`;
+    document.getElementById('hud-cells').textContent = `セル: ${activeCells}`;
+  }
+}
+
+function initArt() {
+  initAudio();
+  resize();
+  initGrid();
+  showHud();
+  loop();
+}
+</script>
+</body>
+</html>
