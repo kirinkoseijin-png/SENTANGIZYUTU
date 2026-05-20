@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Processing で学ぶジェネラティブアート | 大学生向け実践ガイド</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070f;--card:#0d0d1e;--border:#1e1e3e;--text:#dde5f0;--muted:#6e7890;
+  --purple:#9b72f5;--cyan:#00d4ff;--orange:#ff7043;--green:#00e676;
+  --yellow:#ffd740;--pink:#f472b6;--code-bg:#090914;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);line-height:1.85;font-size:16px}
+.pb{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--purple),var(--cyan),var(--green));width:0%;z-index:500;transition:width .3s}
+header{position:relative;overflow:hidden;background:radial-gradient(ellipse 60% 60% at 35% 50%,rgba(155,114,245,.1) 0%,transparent 100%),radial-gradient(ellipse 50% 70% at 70% 50%,rgba(0,212,255,.07) 0%,transparent 100%),#07070f;border-bottom:1px solid var(--border);padding:72px 20px 60px;text-align:center}
+#hcanvas{position:absolute;top:0;left:0;width:100%;height:100%;opacity:.2;pointer-events:none}
+header h1{font-size:clamp(1.9rem,4vw,3.2rem);font-weight:900;letter-spacing:-.025em;background:linear-gradient(135deg,#c4aaff 0%,#00d4ff 45%,#ffb347 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;position:relative;z-index:1;margin-bottom:10px}
+.hsubt{color:var(--muted);font-size:1.05rem;position:relative;z-index:1;margin-bottom:18px}
+.tags{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1}
+.tag{background:rgba(155,114,245,.12);border:1px solid rgba(155,114,245,.35);color:var(--purple);padding:4px 14px;border-radius:20px;font-size:.82rem}
+nav{position:sticky;top:0;z-index:200;background:rgba(7,7,15,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);overflow-x:auto}
+.ni{display:flex;max-width:1060px;margin:0 auto;white-space:nowrap}
+nav a{color:var(--muted);text-decoration:none;padding:13px 15px;font-size:.82rem;border-bottom:2px solid transparent;transition:all .2s;display:inline-block}
+nav a:hover{color:var(--cyan);border-bottom-color:var(--cyan)}
+nav a.act{color:var(--purple);border-bottom-color:var(--purple)}
+.score-box{position:fixed;bottom:22px;right:22px;z-index:200;background:rgba(13,13,30,.95);border:1px solid var(--border);border-radius:14px;padding:13px 18px;backdrop-filter:blur(12px);text-align:center}
+.sl{font-size:.7rem;color:var(--muted);letter-spacing:.06em}
+.sn{font-size:1.9rem;font-weight:800;color:var(--purple);line-height:1}
+.st{font-size:.75rem;color:var(--muted)}
+main{max-width:1000px;margin:0 auto;padding:0 20px 90px}
+section{margin:64px 0;padding-top:8px}
+.sh{display:flex;align-items:center;gap:16px;margin-bottom:28px}
+.snum{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;flex-shrink:0;font-family:monospace}
+.sh h2{font-size:clamp(1.2rem,2.5vw,1.75rem);font-weight:700}
+p{margin:11px 0;font-size:.97rem}
+ul,ol{padding-left:22px;margin:10px 0}
+li{margin:5px 0;font-size:.96rem}
+strong{color:#fff}
+hr{border:none;border-top:1px solid var(--border);margin:28px 0}
+.cb{background:var(--code-bg);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:18px 0}
+.ch{background:#0c0c1e;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.cl{color:var(--purple);font-size:.77rem;font-weight:700;letter-spacing:.05em}
+.cpbtn{background:rgba(155,114,245,.11);border:1px solid rgba(155,114,245,.28);color:var(--purple);padding:3px 11px;border-radius:5px;cursor:pointer;font-size:.77rem;transition:all .15s}
+.cpbtn:hover{background:rgba(155,114,245,.22)}
+.cpbtn.ok{color:var(--green);border-color:var(--green);background:rgba(0,230,118,.1)}
+pre{padding:18px 20px;overflow-x:auto;line-height:1.72;font-family:'Fira Code','Cascadia Code','Consolas',monospace;font-size:.86rem;color:#c9d1d9}
+.kw{color:#ff7b72}.tp{color:#ffa657}.fn{color:#79c0ff}.nm{color:#a5d6ff}.sx{color:#a8d8a8}.cm{color:#6a737d;font-style:italic}.cn{color:#ffd700}
+.card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:22px 24px;margin:16px 0}
+.card h3{font-size:1rem;margin-bottom:12px;color:var(--cyan)}
+.box{border-radius:10px;padding:13px 17px;margin:13px 0;display:flex;gap:11px;font-size:.94rem}
+.box.tip{background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2)}
+.box.warn{background:rgba(255,112,67,.06);border:1px solid rgba(255,112,67,.22)}
+.box.note{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2)}
+.box.math{background:rgba(155,114,245,.07);border:1px solid rgba(155,114,245,.25)}
+.box .ic{font-size:1.15rem;flex-shrink:0;line-height:1.45}
+.box .bc{line-height:1.72}
+.box.tip strong{color:var(--green)}.box.warn strong{color:var(--orange)}.box.note strong{color:var(--cyan)}.box.math strong{color:var(--purple)}
+.fm{background:rgba(155,114,245,.07);border:1px solid rgba(155,114,245,.22);border-radius:10px;padding:15px 20px;margin:15px 0;text-align:center;font-size:1.05rem;color:#d8d0ff;letter-spacing:.03em}
+.dw{background:var(--code-bg);border:1px solid var(--border);border-radius:13px;overflow:hidden;margin:20px 0}
+.dh{background:#0c0c1e;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);font-size:.8rem}
+.dl{color:var(--green);font-weight:700;font-size:.77rem}.dn{color:var(--muted)}
+.db{padding:13px;display:flex;gap:13px;align-items:flex-start;flex-wrap:wrap}
+.db canvas{border-radius:7px;display:block;flex-shrink:0}
+.dc{flex:1;min-width:155px;display:flex;flex-direction:column;gap:11px}
+.cg label{display:block;font-size:.77rem;color:var(--muted);margin-bottom:3px}
+.cg input[type=range]{width:100%;accent-color:var(--purple)}
+.cv{font-size:.73rem;color:var(--cyan);text-align:right;margin-top:2px}
+.dbtn{background:rgba(155,114,245,.11);border:1px solid rgba(155,114,245,.28);color:var(--purple);padding:7px 13px;border-radius:7px;cursor:pointer;font-size:.83rem;transition:all .15s;width:100%}
+.dbtn:hover{background:rgba(155,114,245,.22)}
+code{background:rgba(155,114,245,.13);color:var(--purple);padding:2px 7px;border-radius:4px;font-family:'Fira Code',monospace;font-size:.87em}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.9rem}
+th{background:#0c0c1e;padding:11px 15px;text-align:left;font-weight:600;border-bottom:2px solid var(--border);color:var(--cyan)}
+td{padding:11px 15px;border-bottom:1px solid var(--border)}
+tr:hover td{background:rgba(155,114,245,.04)}
+.tc{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:16px 0}
+.quiz{background:#090914;border:1px solid var(--border);border-radius:15px;padding:25px;margin:44px 0 20px;position:relative;overflow:hidden}
+.quiz::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),var(--cyan))}
+.qh{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:13px;border-bottom:1px solid var(--border)}
+.qbadge{background:linear-gradient(135deg,var(--purple),var(--cyan));color:#fff;padding:3px 13px;border-radius:20px;font-size:.75rem;font-weight:700}
+.qh h3{font-size:.9rem;color:var(--muted)}
+.qq{font-size:1.02rem;line-height:1.78;margin-bottom:20px}
+.qcs{display:flex;flex-direction:column;gap:9px}
+.qc{background:rgba(255,255,255,.025);border:1px solid var(--border);color:var(--text);padding:12px 17px;border-radius:9px;text-align:left;cursor:pointer;font-size:.92rem;transition:all .18s;line-height:1.5;width:100%}
+.qc:hover:not(:disabled){border-color:var(--purple);background:rgba(155,114,245,.09);transform:translateX(3px)}
+.qc.ok{border-color:var(--green);background:rgba(0,230,118,.09);color:var(--green)}
+.qc.ng{border-color:var(--orange);background:rgba(255,112,67,.07);color:var(--orange);opacity:.72}
+.qr{margin-top:13px;padding:12px 17px;border-radius:9px;font-size:.92rem;line-height:1.72;display:none}
+.qr.ok{background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.25);color:#88f0a8;display:block}
+.qr.ng{background:rgba(255,112,67,.07);border:1px solid rgba(255,112,67,.22);color:#ff9068;display:block}
+@media(max-width:650px){.db{flex-direction:column}.tc{grid-template-columns:1fr}.score-box{bottom:10px;right:10px;padding:10px 13px}.sn{font-size:1.5rem}}
+</style>
+</head>
+<body>
+
+<div class="pb" id="pb"></div>
+
+<header>
+  <canvas id="hcanvas"></canvas>
+  <h1>Processing で学ぶジェネラティブアート</h1>
+  <p class="hsubt">コードで創る &times; 数学で理解する &times; 芸術として表現する</p>
+  <div class="tags">
+    <span class="tag">大学生向け</span>
+    <span class="tag">全8章</span>
+    <span class="tag">理解度チェック付き</span>
+    <span class="tag">実践コード付き</span>
+  </div>
+</header>
+
+<nav>
+  <div class="ni">
+    <a href="#s1">1. 入門</a>
+    <a href="#s2">2. 乱数</a>
+    <a href="#s3">3. Perlinノイズ</a>
+    <a href="#s4">4. フラクタル</a>
+    <a href="#s5">5. パーティクル</a>
+    <a href="#s6">6. フローフィールド</a>
+    <a href="#s7">7. 数学パターン</a>
+    <a href="#s8">8. まとめ</a>
+  </div>
+</nav>
+
+<div class="score-box">
+  <div class="sl">SCORE</div>
+  <div class="sn" id="snum">0</div>
+  <div class="st">/ 8 問</div>
+</div>
+
+<main>
+
+<!-- ===== SECTION 1 ===== -->
+<section id="s1">
+  <div class="sh">
+    <div class="snum" style="background:rgba(155,114,245,.15);color:var(--purple)">01</div>
+    <h2>Processingとは ― 創造的コーディングの入門</h2>
+  </div>
+
+  <p><strong>Processing</strong>は、アーティストやデザイナーがビジュアル表現を学ぶために作られたプログラミング環境です。MIT メディアラボの Casey Reas と Ben Fry が2001年に開発し、Java をベースとした簡潔な構文で複雑な視覚表現を実現できます。<a href="https://processing.org/download" target="_blank" style="color:var(--cyan)">processing.org</a> から無料でダウンロードできます。</p>
+
+  <div class="tc">
+    <div class="card">
+      <h3>座標系</h3>
+      <p>原点 <strong>(0, 0)</strong> は画面の<strong>左上</strong>。X軸は右方向、Y軸は<strong>下方向</strong>（数学と逆）。<code>size(600, 400)</code> なら右下が (600, 400)。</p>
+    </div>
+    <div class="card">
+      <h3>スケッチの構造</h3>
+      <p><code>setup()</code>：起動時に1回だけ実行。<br><code>draw()</code>：毎フレーム繰り返し実行（デフォルト60fps）。</p>
+    </div>
+  </div>
+
+  <div class="cb">
+    <div class="ch"><span class="cl">PROCESSING</span><button class="cpbtn" data-target="code1">コピー</button></div>
+    <pre id="code1" data-lang="processing"></pre>
+  </div>
+
+  <div class="box note"><div class="ic">💡</div><div class="bc"><strong>HSBカラーモード</strong>：<code>colorMode(HSB, 360, 100, 100)</code> で色相(Hue)・彩度(Saturation)・明度(Brightness)を直感的に指定できる。アニメーションで色を変化させるときは HSB が便利。</div></div>
+
+  <div class="dw">
+    <div class="dh"><span class="dl">▶ LIVE DEMO</span><span class="dn">setup() / draw() の動作イメージ</span></div>
+    <div class="db">
+      <canvas id="d1" width="380" height="260"></canvas>
+      <div class="dc">
+        <p style="font-size:.83rem;color:var(--muted)">図形がフレームごとに描画され、残像（フェード）効果で軌跡が残ります。<br><br>マウス（または自動移動点）の位置に応じて色と大きさが変わります。</p>
+        <div class="cg">
+          <label>フェード速度</label>
+          <input type="range" id="d1fade" min="1" max="40" value="15">
+          <div class="cv" id="d1fadev">15</div>
+        </div>
+        <div class="cg">
+          <label>図形サイズ</label>
+          <input type="range" id="d1size" min="10" max="80" value="40">
+          <div class="cv" id="d1sizev">40</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz">
+    <div class="qh"><span class="qbadge">Q1</span><h3>Section 1 理解度チェック</h3></div>
+    <div class="qq">Processingで <code>frameRate(24)</code> を <code>setup()</code> 内で呼び出した場合の説明として<strong>正しい</strong>ものはどれか？</div>
+    <div class="qcs">
+      <button class="qc" data-q="1" data-a="0">A) <code>draw()</code> が1秒間に約24回呼ばれるようになる</button>
+      <button class="qc" data-q="1" data-a="1">B) スケッチ全体が24フレーム実行された後に自動停止する</button>
+      <button class="qc" data-q="1" data-a="2">C) 1フレームの描画に必ず24ミリ秒かかるようになる</button>
+      <button class="qc" data-q="1" data-a="3">D) <code>setup()</code> が24回繰り返して実行される</button>
+    </div>
+    <div class="qr" id="qr1"></div>
+  </div>
+</section>
+
+<!-- ===== SECTION 2 ===== -->
+<section id="s2">
+  <div class="sh">
+    <div class="snum" style="background:rgba(0,212,255,.12);color:var(--cyan)">02</div>
+    <h2>乱数とランダムウォーク ― 確率の美学</h2>
+  </div>
+
+  <p>ランダム性はジェネラティブアートの根幹です。Processingには2種類の乱数関数があり、それぞれ異なる統計的性質を持ちます。</p>
+
+  <div class="tc">
+    <div class="card">
+      <h3>random(min, max)</h3>
+      <p><strong>一様分布</strong>：指定範囲内の全値が等確率で出現。グラフにすると平坦なヒストグラムになる。</p>
+    </div>
+    <div class="card">
+      <h3>randomGaussian()</h3>
+      <p><strong>正規分布</strong>：平均0・標準偏差1。中心付近の値が高確率、極端な値は低確率。自然現象に近い。</p>
+    </div>
+  </div>
+
+  <div class="fm">ランダムウォーク：&nbsp; x<sub>t+1</sub> = x<sub>t</sub> + &Delta;x &nbsp;|&nbsp; y<sub>t+1</sub> = y<sub>t</sub> + &Delta;y</div>
+
+  <div class="cb">
+    <div class="ch"><span class="cl">PROCESSING</span><button class="cpbtn" data-target="code2">コピー</button></div>
+    <pre id="code2" data-lang="processing"></pre>
+  </div>
+
+  <div class="box tip"><div class="ic">🌱</div><div class="bc"><strong>randomSeed(n)</strong> で乱数の初期値を固定すると、毎回同じパターンが再現できる。作品の「バージョン管理」に使える強力な手法。</div></div>
+
+  <div class="dw">
+    <div class="dh"><span class="dl">▶ LIVE DEMO</span><span class="dn">一様乱数 vs ガウス乱数のランダムウォーク比較</span></div>
+    <div class="db">
+      <canvas id="d2" width="380" height="260"></canvas>
+      <div class="dc">
+        <p style="font-size:.82rem;color:var(--muted)"><span style="color:var(--cyan)">■ 青</span>：uniform random()<br>均等に広がる<br><br><span style="color:var(--orange)">■ 橙</span>：randomGaussian()<br>中心付近に密集</p>
+        <div class="cg">
+          <label>ステップサイズ</label>
+          <input type="range" id="d2step" min="2" max="15" value="5">
+          <div class="cv" id="d2stepv">5</div>
+        </div>
+        <button class="dbtn" id="d2reset">リセット</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz">
+    <div class="qh"><span class="qbadge">Q2</span><h3>Section 2 理解度チェック</h3></div>
+    <div class="qq"><code>random(-5, 5)</code> と <code>randomGaussian() * 2</code> の違いについて最も正確に述べているものはどれか？</div>
+    <div class="qcs">
+      <button class="qc" data-q="2" data-a="0">A) <code>random()</code> は整数のみを返し、<code>randomGaussian()</code> は小数を返す</button>
+      <button class="qc" data-q="2" data-a="1">B) <code>random()</code> は範囲内すべての値が等確率（一様分布）だが、<code>randomGaussian()</code> は0付近の値が高確率（正規分布）になる</button>
+      <button class="qc" data-q="2" data-a="2">C) 出力の平均値は同じだが、<code>randomGaussian()</code> の方が計算が速い</button>
+      <button class="qc" data-q="2" data-a="3">D) 両者は数学的に等価であり、長期的には同じ分布になる</button>
+    </div>
+    <div class="qr" id="qr2"></div>
+  </div>
+</section>
+
+<!-- ===== SECTION 3 ===== -->
+<section id="s3">
+  <div class="sh">
+    <div class="snum" style="background:rgba(0,230,118,.1);color:var(--green)">03</div>
+    <h2>Perlin ノイズ ― 有機的なパターンの生成</h2>
+  </div>
+
+  <p>1983年、Ken Perlin は映画「Tron」のCG制作で、コンピュータグラフィクスの不自然さを克服するためにPerlinノイズを発明しました。<code>random()</code> が独立した値を返すのに対し、<strong>Perlinノイズは連続的に変化する</strong>ため、煙・地形・波など自然現象のシミュレーションに適しています。</p>
+
+  <div class="fm">noise(x) &isin; [0, 1] &nbsp;|&nbsp; 近い x の値 &rArr; 近い出力値（連続性）</div>
+
+  <div class="tc">
+    <div class="card">
+      <h3>次元と用途</h3>
+      <ul>
+        <li><code>noise(x)</code>：1D ― 時間変化する値</li>
+        <li><code>noise(x, y)</code>：2D ― 地形・テクスチャ</li>
+        <li><code>noise(x, y, z)</code>：3D ― アニメーション付き2D場</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>パラメータ調整</h3>
+      <ul>
+        <li><code>noiseDetail(lod, falloff)</code>：倍音数と減衰率で細かさを調整</li>
+        <li><code>noiseSeed(n)</code>：同じシードで同じノイズ場を再現</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="cb">
+    <div class="ch"><span class="cl">PROCESSING</span><button class="cpbtn" data-target="code3">コピー</button></div>
+    <pre id="code3" data-lang="processing"></pre>
+  </div>
+
+  <div class="box math"><div class="ic">🧮</div><div class="bc"><strong>ノイズスケール（xStep）</strong>の意味：noise()に渡す引数の増分が大きいほど変化が急峻になる。<code>xStep = 0.01</code> なら滑らか、<code>xStep = 0.5</code> ならざらざら。これは「ノイズ空間をどのくらいズームアウトして見るか」に相当する。</div></div>
+
+  <div class="dw">
+    <div class="dh"><span class="dl">▶ LIVE DEMO</span><span class="dn">Perlinノイズによる流動的なパターン</span></div>
+    <div class="db">
+      <canvas id="d3" width="380" height="260"></canvas>
+      <div class="dc">
+        <div class="cg">
+          <label>ノイズスケール（細かさ）</label>
+          <input type="range" id="d3scale" min="1" max="50" value="12">
+          <div class="cv" id="d3scalev">0.012</div>
+        </div>
+        <div class="cg">
+          <label>時間速度</label>
+          <input type="range" id="d3speed" min="1" max="30" value="8">
+          <div class="cv" id="d3speedv">0.008</div>
+        </div>
+        <div class="cg">
+          <label>ライン本数</label>
+          <input type="range" id="d3lines" min="20" max="120" value="60">
+          <div class="cv" id="d3linesv">60</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz">
+    <div class="qh"><span class="qbadge">Q3</span><h3>Section 3 理解度チェック</h3></div>
+    <div class="qq">Processing の <code>noise(x)</code> に関する記述として<strong>正しい</strong>ものを選べ。</div>
+    <div class="qcs">
+      <button class="qc" data-q="3" data-a="0">A) 呼び出すたびに完全に独立した値を返すため、<code>random()</code> と同じ用途に使える</button>
+      <button class="qc" data-q="3" data-a="1">B) 引数 x が近い値どうしでは出力も近い値になり、滑らかな連続性がある</button>
+      <button class="qc" data-q="3" data-a="2">C) 出力は必ず −1 〜 1 の範囲に収まる</button>
+      <button class="qc" data-q="3" data-a="3">D) <code>noise(x, y)</code> は <code>noise(x) * noise(y)</code> と数学的に等価である</button>
+    </div>
+    <div class="qr" id="qr3"></div>
+  </div>
+</section>
+
+<!-- ===== SECTION 4 ===== -->
+<section id="s4">
+  <div class="sh">
+    <div class="snum" style="background:rgba(255,112,67,.1);color:var(--orange)">04</div>
+    <h2>再帰とフラクタル ― 自己相似構造の美</h2>
+  </div>
+
+  <p><strong>フラクタル</strong>とは、どのスケールで見ても同じ構造が繰り返される「自己相似性」を持つ図形です。Benoit Mandelbrot が1975年に命名しました。自然界の海岸線・雲・雪の結晶はすべてフラクタル的な性質を持ちます。</p>
+
+  <p>Processingでは<strong>再帰関数</strong>を使ってフラクタルを描画します。再帰関数とは、自分自身を呼び出す関数のことで、<strong>終了条件（base case）</strong>がないと無限ループになるため必ず設定します。</p>
+
+  <div class="box warn"><div class="ic">⚠️</div><div class="bc"><strong>再帰の深さに注意：</strong>深さが増えると呼び出し回数は指数的に増加する。深さ10・2分岐なら 2<sup>10</sup> = 1024 回の描画が発生。深すぎると描画が重くなる。</div></div>
+
+  <div class="cb">
+    <div class="ch"><span class="cl">PROCESSING — フラクタルツリー</span><button class="cpbtn" data-target="code4">コピー</button></div>
+    <pre id="code4" data-lang="processing"></pre>
+  </div>
+
+  <div class="box note"><div class="ic">📐</div><div class="bc"><strong>pushMatrix() / popMatrix()</strong>：座標変換（translate・rotate）の状態を保存・復元するスタック操作。フラクタル描画で「親の枝の先端に移動してから分岐し、戻る」という操作を実現する。</div></div>
+
+  <div class="dw">
+    <div class="dh"><span class="dl">▶ LIVE DEMO</span><span class="dn">インタラクティブ フラクタルツリー</span></div>
+    <div class="db">
+      <canvas id="d4" width="380" height="300"></canvas>
+      <div class="dc">
+        <div class="cg">
+          <label>再帰の深さ</label>
+          <input type="range" id="d4depth" min="2" max="11" value="7">
+          <div class="cv" id="d4depthv">7</div>
+        </div>
+        <div class="cg">
+          <label>分岐角度 (°)</label>
+          <input type="range" id="d4angle" min="5" max="60" value="25">
+          <div class="cv" id="d4anglev">25°</div>
+        </div>
+        <div class="cg">
+          <label>枝の縮小率 (%)</label>
+          <input type="range" id="d4ratio" min="50" max="80" value="68">
+          <div class="cv" id="d4ratiov">68%</div>
+        </div>
+        <div class="cg">
+          <label>揺れの強さ</label>
+          <input type="range" id="d4sway" min="0" max="20" value="5">
+          <div class="cv" id="d4swayv">5</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz">
+    <div class="qh"><span class="qbadge">Q4</span><h3>Section 4 理解度チェック</h3></div>
+    <div class="qq">1本の幹から左右2本ずつ分岐するフラクタルツリーを、終了条件「<code>depth &gt; 7</code>」で描いたとき、最終的な「葉の枝」の最大本数はいくつか？</div>
+    <div class="qcs">
+      <button class="qc" data-q="4" data-a="0">A) 7本</button>
+      <button class="qc" data-q="4" data-a="1">B) 64本（2<sup>6</sup>）</button>
+      <button class="qc" data-q="4" data-a="2">C) 128本（2<sup>7</sup>）</button>
+      <button class="qc" data-q="4" data-a="3">D) 256本（2<sup>8</sup>）</button>
+    </div>
+    <div class="qr" id="qr4"></div>
+  </div>
+</section>
+
+<!-- ===== SECTION 5 ===== -->
+<section id="s5">
+  <div class="sh">
+    <div class="snum" style="background:rgba(244,114,182,.1);color:var(--pink)">05</div>
+    <h2>パーティクルシステム ― 物理シミュレーションと OOP</h2>
+  </div>
+
+  <p><strong>パーティクルシステム</strong>は、多数の小さな粒子（パーティクル）の集合体で煙・炎・爆発・雨などを表現する手法です。1983年に映画「スタートレックII」のCGに初めて使われました。</p>
+
+  <p>各パーティクルは<strong>位置・速度・加速度・寿命</strong>を持ち、ニュートンの運動方程式に基づいて更新されます。</p>
+
+  <div class="fm"><strong>F = ma</strong> &nbsp;&rArr;&nbsp; a = F/m &nbsp;&rArr;&nbsp; v<sub>t+1</sub> = v<sub>t</sub> + a &nbsp;&rArr;&nbsp; x<sub>t+1</sub> = x<sub>t</sub> + v<sub>t+1</sub></div>
+
+  <div class="cb">
+    <div class="ch"><span class="cl">PROCESSING — Particle クラス</span><button class="cpbtn" data-target="code5">コピー</button></div>
+    <pre id="code5" data-lang="processing"></pre>
+  </div>
+
+  <div class="box tip"><div class="ic">🎯</div><div class="bc"><strong>PVector</strong>：Processing のベクトルクラス。<code>add()</code>・<code>mult()</code>・<code>limit()</code>・<code>dist()</code> などのメソッドを持ち、物理計算を直感的に記述できる。<code>PVector.random2D()</code> で単位ランダムベクトルを生成。</div></div>
+
+  <div class="dw">
+    <div class="dh"><span class="dl">▶ LIVE DEMO</span><span class="dn">インタラクティブ パーティクルシステム（クリックで爆発）</span></div>
+    <div class="db">
+      <canvas id="d5" width="380" height="280" style="cursor:crosshair"></canvas>
+      <div class="dc">
+        <p style="font-size:.82rem;color:var(--muted)">キャンバスをクリックするとその位置からパーティクルが爆発します</p>
+        <div class="cg">
+          <label>重力</label>
+          <input type="range" id="d5grav" min="0" max="30" value="8">
+          <div class="cv" id="d5gravv">0.08</div>
+        </div>
+        <div class="cg">
+          <label>初速度</label>
+          <input type="range" id="d5vel" min="1" max="20" value="8">
+          <div class="cv" id="d5velv">8</div>
+        </div>
+        <div class="cg">
+          <label>寿命</label>
+          <input type="range" id="d5life" min="30" max="200" value="90">
+          <div class="cv" id="d5lifev">90</div>
+        </div>
+        <button class="dbtn" id="d5clear">クリア</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz">
+    <div class="qh"><span class="qbadge">Q5</span><h3>Section 5 理解度チェック</h3></div>
+    <div class="qq">パーティクルに毎フレーム抗力（drag force）<strong>F<sub>drag</sub> = −k × v</strong>（k &gt; 0、v は速度ベクトル）を加え続けた場合、外力がなければ長時間後にパーティクルの速度はどうなるか？</div>
+    <div class="qcs">
+      <button class="qc" data-q="5" data-a="0">A) 無限に加速し続ける</button>
+      <button class="qc" data-q="5" data-a="1">B) 速度がゼロに収束し、停止する</button>
+      <button class="qc" data-q="5" data-a="2">C) 一定速度（終端速度）で等速運動する</button>
+      <button class="qc" data-q="5" data-a="3">D) 速度が振動しながら一定値に落ち着く</button>
+    </div>
+    <div class="qr" id="qr5"></div>
+  </div>
+</section>
+
+<!-- ===== SECTION 6 ===== -->
+<section id="s6">
+  <div class="sh">
+    <div class="snum" style="background:rgba(255,215,64,.1);color:var(--yellow)">06</div>
+    <h2>フローフィールド ― ベクトル場を流れる粒子</h2>
+  </div>
+
+  <p><strong>フローフィールド</strong>（ベクトル場）とは、空間の各点に方向ベクトルを割り当てたものです。パーティクルがこのベクトル場に従って移動することで、流体のような自然な動きが生まれます。</p>
+
+  <p>Perlinノイズを角度として使うことで、滑らかに変化するベクトル場を構築できます。</p>
+
+  <div class="fm">angle = noise(c &times; scale, r &times; scale, t) &times; TWO_PI &times; 4</div>
+
+  <div class="cb">
+    <div class="ch"><span class="cl">PROCESSING — フローフィールド</span><button class="cpbtn" data-target="code6">コピー</button></div>
+    <pre id="code6" data-lang="processing"></pre>
+  </div>
+
+  <div class="box math"><div class="ic">🧮</div><div class="bc"><strong>なぜ random() ではなく noise() を使うのか？</strong>隣接するグリッドセルが <code>random()</code> で決まると方向がバラバラになり、パーティクルが激しく揺れる。<code>noise()</code> を使えば隣接セルの方向が滑らかにつながり、パーティクルが自然に「流れる」。</div></div>
+
+  <div class="dw">
+    <div class="dh"><span class="dl">▶ LIVE DEMO</span><span class="dn">Perlinノイズ フローフィールド（矢印 + 粒子）</span></div>
+    <div class="db">
+      <canvas id="d6" width="380" height="280"></canvas>
+      <div class="dc">
+        <div class="cg">
+          <label>ノイズスケール</label>
+          <input type="range" id="d6scale" min="1" max="30" value="10">
+          <div class="cv" id="d6scalev">0.10</div>
+        </div>
+        <div class="cg">
+          <label>グリッド解像度</label>
+          <input type="range" id="d6res" min="10" max="40" value="20">
+          <div class="cv" id="d6resv">20px</div>
+        </div>
+        <div class="cg">
+          <label>時間速度</label>
+          <input type="range" id="d6speed" min="1" max="20" value="5">
+          <div class="cv" id="d6speedv">0.005</div>
+        </div>
+        <div class="cg">
+          <label>矢印表示</label>
+          <input type="range" id="d6arrows" min="0" max="1" step="1" value="1">
+          <div class="cv" id="d6arrowsv">ON</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz">
+    <div class="qh"><span class="qbadge">Q6</span><h3>Section 6 理解度チェック</h3></div>
+    <div class="qq">フローフィールドでグリッドの方向角を決定するのに <code>random()</code> ではなく <code>noise()</code> を用いる最大の利点はどれか？</div>
+    <div class="qcs">
+      <button class="qc" data-q="6" data-a="0">A) <code>noise()</code> の方が処理速度が速いため、大量のパーティクルを扱える</button>
+      <button class="qc" data-q="6" data-a="1">B) 隣接グリッド間の方向が滑らかにつながり、パーティクルが自然に「流れる」ように見える</button>
+      <button class="qc" data-q="6" data-a="2">C) <code>noise()</code> は毎フレーム同じ値を返すため、フィールドが安定する</button>
+      <button class="qc" data-q="6" data-a="3">D) <code>random()</code> は負の値を返さないため、全方向を表現できない</button>
+    </div>
+    <div class="qr" id="qr6"></div>
+  </div>
+</section>
+
+<!-- ===== SECTION 7 ===== -->
+<section id="s7">
+  <div class="sh">
+    <div class="snum" style="background:rgba(0,212,255,.1);color:var(--cyan)">07</div>
+    <h2>数学的パターン ― 極座標・花曲線・リサージュ</h2>
+  </div>
+
+  <p>三角関数と極座標を使うと、数式だけで美しい幾何学パターンを生成できます。ジェネラティブアートの醍醐味の一つです。</p>
+
+  <div class="tc">
+    <div class="card">
+      <h3>極座標から直交座標への変換</h3>
+      <div class="fm" style="font-size:.95rem">x = r &times; cos(&theta;)<br>y = r &times; sin(&theta;)</div>
+    </div>
+    <div class="card">
+      <h3>花曲線（Rose Curve）</h3>
+      <div class="fm" style="font-size:.95rem">r = cos(n &times; &theta;)<br>n偶数 &rArr; 2n枚，n奇数 &rArr; n枚</div>
+    </div>
+  </div>
+
+  <p><strong>リサージュ図形</strong>は2つの異なる周波数の正弦波を X・Y に割り当てた媒介変数曲線です。オシロスコープの周波数比確認にも使われます。</p>
+
+  <div class="fm">x(t) = A &times; sin(a &times; t + &delta;) &nbsp;&nbsp; y(t) = B &times; sin(b &times; t)</div>
+
+  <div class="cb">
+    <div class="ch"><span class="cl">PROCESSING — リサージュ図形</span><button class="cpbtn" data-target="code7">コピー</button></div>
+    <pre id="code7" data-lang="processing"></pre>
+  </div>
+
+  <div class="dw">
+    <div class="dh"><span class="dl">▶ LIVE DEMO</span><span class="dn">インタラクティブ リサージュ図形</span></div>
+    <div class="db">
+      <canvas id="d7" width="320" height="300"></canvas>
+      <div class="dc">
+        <div class="cg">
+          <label>周波数比 a</label>
+          <input type="range" id="d7a" min="1" max="7" step="1" value="3">
+          <div class="cv" id="d7av">3</div>
+        </div>
+        <div class="cg">
+          <label>周波数比 b</label>
+          <input type="range" id="d7b" min="1" max="7" step="1" value="2">
+          <div class="cv" id="d7bv">2</div>
+        </div>
+        <div class="cg">
+          <label>位相差 &delta; (× π/4)</label>
+          <input type="range" id="d7d" min="0" max="8" step="1" value="2">
+          <div class="cv" id="d7dv">π/2</div>
+        </div>
+        <div class="cg">
+          <label>描画モード</label>
+          <input type="range" id="d7mode" min="0" max="1" step="1" value="0">
+          <div class="cv" id="d7modev">リサージュ</div>
+        </div>
+        <button class="dbtn" id="d7redraw">再描画</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz">
+    <div class="qh"><span class="qbadge">Q7</span><h3>Section 7 理解度チェック</h3></div>
+    <div class="qq">極座標方程式 <strong>r = cos(4&theta;)</strong>（0 &le; &theta; &le; 2&pi;）で描かれる花曲線の花弁の枚数はいくつか？</div>
+    <div class="qcs">
+      <button class="qc" data-q="7" data-a="0">A) 4枚</button>
+      <button class="qc" data-q="7" data-a="1">B) 6枚</button>
+      <button class="qc" data-q="7" data-a="2">C) 8枚</button>
+      <button class="qc" data-q="7" data-a="3">D) 16枚</button>
+    </div>
+    <div class="qr" id="qr7"></div>
+  </div>
+</section>
+
+<!-- ===== SECTION 8 ===== -->
+<section id="s8">
+  <div class="sh">
+    <div class="snum" style="background:rgba(155,114,245,.15);color:var(--purple)">08</div>
+    <h2>まとめと発展 ― 統合演習と次のステップ</h2>
+  </div>
+
+  <p>ここまで学んだ要素を組み合わせることで、複雑で美しいジェネラティブアート作品を制作できます。以下の比較表でアルゴリズムの使い分けを整理しましょう。</p>
+
+  <table>
+    <tr><th>技法</th><th>主な用途</th><th>核となる関数</th><th>難易度</th></tr>
+    <tr><td>random() ウォーク</td><td>拡散・テクスチャ</td><td><code>random()</code></td><td>★☆☆</td></tr>
+    <tr><td>Perlinノイズ</td><td>有機的動き・地形</td><td><code>noise()</code></td><td>★★☆</td></tr>
+    <tr><td>フラクタル</td><td>自然物・L-system</td><td>再帰関数</td><td>★★☆</td></tr>
+    <tr><td>パーティクル</td><td>物理シム・エフェクト</td><td><code>PVector</code></td><td>★★☆</td></tr>
+    <tr><td>フローフィールド</td><td>流体・群知能</td><td><code>noise()</code>+<code>PVector</code></td><td>★★★</td></tr>
+    <tr><td>極座標パターン</td><td>幾何学・対称美</td><td><code>sin()</code>/<code>cos()</code></td><td>★★☆</td></tr>
+  </table>
+
+  <div class="card">
+    <h3>発展トピック</h3>
+    <ul>
+      <li><strong>Processing 3D（P3D レンダラー）</strong>：<code>size(w, h, P3D)</code> で3次元空間を利用</li>
+      <li><strong>PShader（GLSL シェーダー）</strong>：GPU で並列処理、リアルタイムのビジュアルエフェクト</li>
+      <li><strong>Minim ライブラリ</strong>：音楽解析・リアクティブビジュアル</li>
+      <li><strong>saveFrame()</strong>：アニメーションを連番PNG で保存して動画に変換</li>
+      <li><strong>Nature of Code（Daniel Shiffman）</strong>：物理シミュレーション全般を扱う決定版テキスト</li>
+    </ul>
+  </div>
+
+  <div class="box tip"><div class="ic">🚀</div><div class="bc"><strong>作品制作のワークフロー：</strong>①テーマ決定 → ②アルゴリズム選択 → ③パラメータ探索（randomSeed を変えながら）→ ④スクリーンショット比較 → ⑤saveFrame() で動画書き出し。</div></div>
+
+  <div class="dw">
+    <div class="dh"><span class="dl">▶ LIVE DEMO</span><span class="dn">統合ジェネラティブアート（フローフィールド + パーティクル + 色彩変化）</span></div>
+    <div class="db" style="justify-content:center">
+      <canvas id="d8" width="560" height="320"></canvas>
+    </div>
+  </div>
+
+  <div class="quiz">
+    <div class="qh"><span class="qbadge">Q8</span><h3>Section 8 理解度チェック</h3></div>
+    <div class="qq">フローフィールドとパーティクルを組み合わせた作品で、「毎回異なるが、同じシード番号なら完全に再現できる」ようにするために必要な操作はどれか？</div>
+    <div class="qcs">
+      <button class="qc" data-q="8" data-a="0">A) <code>frameRate(0)</code> を <code>setup()</code> で呼ぶ</button>
+      <button class="qc" data-q="8" data-a="1">B) <code>noiseSeed(n)</code> と <code>randomSeed(n)</code> で同じ整数値 n を設定する</button>
+      <button class="qc" data-q="8" data-a="2">C) <code>background()</code> を <code>draw()</code> 内で呼ばない</button>
+      <button class="qc" data-q="8" data-a="3">D) <code>noLoop()</code> を <code>draw()</code> の末尾で呼ぶ</button>
+    </div>
+    <div class="qr" id="qr8"></div>
+  </div>
+
+  <hr>
+  <div class="card" style="text-align:center;padding:32px">
+    <h3 style="font-size:1.15rem;margin-bottom:14px">🎨 他のインタラクティブアートも見てみよう</h3>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px">
+      <a href="index.html" style="color:var(--cyan);text-decoration:none;border:1px solid var(--cyan);padding:8px 20px;border-radius:8px;font-size:.9rem">メインアート (フレーム差分)</a>
+      <a href="art1-evoloop.html" style="color:var(--green);text-decoration:none;border:1px solid var(--green);padding:8px 20px;border-radius:8px;font-size:.9rem">Evoloop セルオートマトン</a>
+      <a href="art2-komorebi.html" style="color:var(--yellow);text-decoration:none;border:1px solid var(--yellow);padding:8px 20px;border-radius:8px;font-size:.9rem">Komorebi 木漏れ日</a>
+      <a href="learn.html" style="color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 20px;border-radius:8px;font-size:.9rem">中学生向け解説</a>
+      <a href="learn2.html" style="color:var(--pink);text-decoration:none;border:1px solid var(--pink);padding:8px 20px;border-radius:8px;font-size:.9rem">高校生向け解説</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+// ============================================================
+//  PROCESSING CODE SAMPLES
+// ============================================================
+const CODES = {
+code1: `// ===== 最初のスケッチ =====
+void setup() {
+  size(600, 400);        // ウィンドウサイズ
+  colorMode(HSB, 360, 100, 100, 100); // HSBカラーモード
+  smooth();              // アンチエイリアス
+}
+
+void draw() {
+  // 半透明の黒で薄く塗りつぶす → 残像効果
+  fill(0, 0, 5, 18);
+  noStroke();
+  rect(0, 0, width, height);
+
+  // マウス位置・frameCount で色と大きさを変化
+  float hue = map(mouseX, 0, width, 0, 360);
+  float sz  = map(sin(frameCount * 0.04), -1, 1, 15, 70);
+
+  fill(hue, 80, 100, 75);
+  stroke(hue, 30, 100, 40);
+  strokeWeight(1.5);
+  ellipse(mouseX, mouseY, sz, sz);
+}`,
+
+code2: `// ===== ランダムウォーク比較 =====
+float ux, uy; // uniform random 用
+float gx, gy; // Gaussian 用
+
+void setup() {
+  size(600, 400);
+  background(10);
+  ux = width / 4;  uy = height / 2;
+  gx = 3 * width / 4; gy = height / 2;
+}
+
+void draw() {
+  float step = 5;
+
+  // 一様乱数ウォーク
+  ux += random(-step, step);
+  uy += random(-step, step);
+  ux = constrain(ux, 0, width / 2);
+  uy = constrain(uy, 0, height);
+  stroke(0, 180, 255, 100);
+  strokeWeight(1.5);
+  point(ux, uy);
+
+  // ガウス乱数ウォーク（中心付近に集まる）
+  gx += randomGaussian() * step * 0.6;
+  gy += randomGaussian() * step * 0.6;
+  gx = constrain(gx, width / 2, width);
+  gy = constrain(gy, 0, height);
+  stroke(255, 120, 50, 100);
+  point(gx, gy);
+}`,
+
+code3: `// ===== Perlinノイズで有機的な動き =====
+float t = 0; // 時間軸
+
+void setup() {
+  size(600, 400);
+  colorMode(HSB, 360, 100, 100, 100);
+}
+
+void draw() {
+  background(0, 0, 5, 20); // 半透明フェード
+
+  // 60本の線をノイズで揺らす
+  for (int i = 0; i < 60; i++) {
+    // noise(空間座標, 時間) で滑らかに変化
+    float x1 = noise(i * 0.08, t) * width;
+    float y1 = noise(i * 0.08 + 10, t) * height;
+    float x2 = noise(i * 0.08 + 50, t + 0.1) * width;
+    float y2 = noise(i * 0.08 + 60, t + 0.1) * height;
+
+    float hue = noise(i * 0.15, t * 0.5) * 280 + 160;
+    stroke(hue, 75, 95, 55);
+    strokeWeight(1.2);
+    line(x1, y1, x2, y2);
+  }
+
+  t += 0.006; // ノイズ空間を時間方向に移動
+}`,
+
+code4: `// ===== フラクタルツリー（再帰） =====
+void setup() {
+  size(600, 600);
+}
+
+void draw() {
+  background(10);
+  stroke(80, 200, 90);
+  // 画面下中央に原点を移動して描画開始
+  translate(width / 2, height);
+  drawBranch(130, 0); // 幹の長さ130, 深さ0
+}
+
+void drawBranch(float len, int depth) {
+  // ===== 終了条件（base case）=====
+  if (depth > 8 || len < 4) return;
+
+  // 枝の太さを長さに比例させる
+  strokeWeight(map(len, 4, 130, 0.5, 7));
+
+  // 風で揺れるアニメーション
+  float sway = sin(frameCount * 0.02 + depth * 0.5) * 4;
+
+  line(0, 0, 0, -len); // 枝を描く
+  translate(0, -len);  // 枝の先端へ移動
+
+  // 左右に分岐（再帰呼び出し）
+  pushMatrix();
+  rotate(radians(-25 + sway));
+  drawBranch(len * 0.68, depth + 1);
+  popMatrix();
+
+  pushMatrix();
+  rotate(radians(25 + sway));
+  drawBranch(len * 0.68, depth + 1);
+  popMatrix();
+}`,
+
+code5: `// ===== パーティクルシステム =====
+ArrayList particles = new ArrayList();
+
+void setup() {
+  size(600, 400);
+  colorMode(HSB, 360, 100, 100, 100);
+}
+
+void draw() {
+  fill(0, 0, 5, 20);
+  noStroke();
+  rect(0, 0, width, height);
+
+  // マウス位置から毎フレーム3個生成
+  for (int i = 0; i < 3; i++) {
+    particles.add(new Particle(mouseX, mouseY));
+  }
+
+  // 後ろから走査して削除（ConcurrentModification 回避）
+  for (int i = particles.size() - 1; i >= 0; i--) {
+    Particle p = (Particle) particles.get(i);
+    p.update();
+    p.display();
+    if (p.isDead()) particles.remove(i);
+  }
+}
+
+class Particle {
+  PVector pos, vel, acc;
+  float life, maxLife, hue;
+
+  Particle(float x, float y) {
+    pos = new PVector(x, y);
+    // ランダムな初速度
+    vel = PVector.random2D().mult(random(2, 6));
+    acc = new PVector(0, 0.08); // 重力
+    maxLife = life = random(60, 120);
+    hue = random(200, 300);
+  }
+
+  void update() {
+    vel.add(acc);   // 加速度を速度に積算
+    pos.add(vel);   // 速度を位置に積算
+    life--;
+  }
+
+  void display() {
+    float alpha = map(life, 0, maxLife, 0, 85);
+    float sz    = map(life, 0, maxLife, 0, 14);
+    fill(hue, 80, 100, alpha);
+    noStroke();
+    ellipse(pos.x, pos.y, sz, sz);
+  }
+
+  boolean isDead() { return life <= 0; }
+}`,
+
+code6: `// ===== フローフィールド =====
+int RES = 20; // グリッドのセルサイズ（px）
+int COLS, ROWS;
+float[][] field;        // 各セルの方向角
+ArrayList movers = new ArrayList();
+
+void setup() {
+  size(600, 400);
+  COLS = ceil((float)width  / RES);
+  ROWS = ceil((float)height / RES);
+  field = new float[COLS][ROWS];
+  // パーティクルを200個初期化
+  for (int i = 0; i < 200; i++) {
+    movers.add(new PVector(random(width), random(height)));
+  }
+}
+
+void draw() {
+  fill(0, 0, 0, 18);
+  noStroke();
+  rect(0, 0, width, height);
+
+  float t = frameCount * 0.003; // 時間
+
+  // Perlinノイズで各セルの角度を更新
+  for (int c = 0; c < COLS; c++) {
+    for (int r = 0; r < ROWS; r++) {
+      field[c][r] = noise(c * 0.12, r * 0.12, t) * TWO_PI * 4;
+    }
+  }
+
+  // 各パーティクルをフィールドに従って移動
+  for (int i = 0; i < movers.size(); i++) {
+    PVector pos = (PVector) movers.get(i);
+    int c = constrain((int)(pos.x / RES), 0, COLS - 1);
+    int r = constrain((int)(pos.y / RES), 0, ROWS - 1);
+    float angle = field[c][r];
+
+    PVector force = new PVector(cos(angle), sin(angle));
+    pos.add(force.mult(1.5));
+
+    // 画面端で折り返す（トーラス型空間）
+    if (pos.x < 0)       pos.x = width;
+    if (pos.x > width)   pos.x = 0;
+    if (pos.y < 0)       pos.y = height;
+    if (pos.y > height)  pos.y = 0;
+
+    stroke(180, 80, 200, 50);
+    strokeWeight(1.4);
+    point(pos.x, pos.y);
+  }
+}`,
+
+code7: `// ===== リサージュ図形 =====
+int a = 3, b = 2;    // 周波数比
+float delta = PI / 4; // 位相差
+float t = 0;
+float prevX, prevY;
+boolean first = true;
+
+void setup() {
+  size(500, 500);
+  background(10);
+  colorMode(HSB, 360, 100, 100, 100);
+  strokeWeight(1.5);
+}
+
+void draw() {
+  // 一周したらリセット
+  if (t > TWO_PI * max(a, b) + 0.01) {
+    background(10);
+    t = 0;
+    first = true;
+  }
+
+  // 媒介変数表示
+  float x = width  / 2 + 200 * sin(a * t + delta);
+  float y = height / 2 + 200 * sin(b * t);
+
+  if (!first) {
+    // 時刻 t に応じて色相を変化させる
+    stroke(map(t, 0, TWO_PI * max(a, b), 0, 360), 85, 100, 80);
+    line(prevX, prevY, x, y);
+  }
+
+  prevX = x;
+  prevY = y;
+  first = false;
+  t += 0.004;
+}`
+};
+
+// ============================================================
+//  POPULATE CODE BLOCKS
+// ============================================================
+document.querySelectorAll('pre[data-lang="processing"]').forEach((pre, i) => {
+  const key = 'code' + (i + 1);
+  pre.textContent = CODES[key] || '';
+  pre.innerHTML = highlightPDE(pre.innerHTML);
+});
+
+function highlightPDE(html) {
+  // html is already entity-encoded from textContent → innerHTML assignment
+  // Process comment lines first
+  html = html.replace(/(\/\/[^\n]*)/g, '<span class="cm">$1</span>');
+  // Keywords
+  ['void','new','return','class','for','while','if','else','this','extends','true','false','null'].forEach(k => {
+    html = html.replace(new RegExp('\\b' + k + '\\b', 'g'), '<span class="kw">' + k + '</span>');
+  });
+  // Types
+  ['int','float','boolean','String','PVector','ArrayList'].forEach(k => {
+    html = html.replace(new RegExp('\\b' + k + '\\b', 'g'), '<span class="tp">' + k + '</span>');
+  });
+  // Functions
+  ['setup','draw','size','background','fill','stroke','noStroke','noFill','strokeWeight',
+   'ellipse','rect','line','point','translate','rotate','scale','pushMatrix','popMatrix',
+   'random','randomGaussian','noise','noiseDetail','noiseSeed','randomSeed',
+   'map','constrain','dist','abs','sin','cos','sqrt','pow','floor','ceil','round','max','min','lerp',
+   'frameRate','colorMode','blendMode','smooth','PVector\\.random2D','PVector\\.add',
+   'beginShape','endShape','vertex','arc','radians','drawBranch'].forEach(k => {
+    html = html.replace(new RegExp('\\b' + k + '\\b', 'g'), '<span class="fn">' + k + '</span>');
+  });
+  // Constants
+  ['mouseX','mouseY','width','height','frameCount','PI','TWO_PI','HALF_PI','TAU'].forEach(k => {
+    html = html.replace(new RegExp('\\b' + k + '\\b', 'g'), '<span class="cn">' + k + '</span>');
+  });
+  // Numbers
+  html = html.replace(/\b(\d+\.?\d*f?)\b(?![^<]*>)/g, '<span class="nm">$1</span>');
+  return html;
+}
+
+// ============================================================
+//  COPY BUTTONS
+// ============================================================
+document.querySelectorAll('.cpbtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.target;
+    const pre = document.getElementById(target);
+    const key = 'code' + target.replace('code','');
+    const text = CODES[target] || pre.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = '✓ コピー完了';
+      btn.classList.add('ok');
+      setTimeout(() => { btn.textContent = 'コピー'; btn.classList.remove('ok'); }, 1800);
+    });
+  });
+});
+
+// ============================================================
+//  SIMPLE NOISE (for JS demos — smooth noise approximation)
+// ============================================================
+// Permutation-based gradient noise (simplified Perlin)
+const perm = (()=>{
+  const p = Array.from({length:256}, (_,i) => i);
+  for (let i=255;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[p[i],p[j]]=[p[j],p[i]]; }
+  return [...p,...p];
+})();
+
+function fade(t){ return t*t*t*(t*(t*6-15)+10); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function grad(h,x,y){
+  const v = h&3; const u=v<2?x:y; const w=v<2?y:x;
+  return ((h&1)?-u:u)+((h&2)?-w:w);
+}
+function snoise(x,y,z=0){
+  const X=Math.floor(x)&255, Y=Math.floor(y)&255, Z=Math.floor(z)&255;
+  x-=Math.floor(x); y-=Math.floor(y); z-=Math.floor(z);
+  const u=fade(x),v=fade(y),w=fade(z);
+  const A=perm[X]+Y, AA=perm[A]+Z, AB=perm[A+1]+Z;
+  const B=perm[X+1]+Y, BA=perm[B]+Z, BB=perm[B+1]+Z;
+  return (lerp(lerp(lerp(grad(perm[AA],x,y),grad(perm[BA],x-1,y),u),
+               lerp(grad(perm[AB],x,y-1),grad(perm[BB],x-1,y-1),u),v),
+          lerp(lerp(grad(perm[AA+1],x,y),grad(perm[BA+1],x-1,y),u),
+               lerp(grad(perm[AB+1],x,y-1),grad(perm[BB+1],x-1,y-1),u),v),w)+1)*0.5;
+}
+
+// ============================================================
+//  HEADER CANVAS
+// ============================================================
+(()=>{
+  const canvas = document.getElementById('hcanvas');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = window.innerWidth; canvas.height = canvas.parentElement.offsetHeight;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  let t = 0;
+  const pts = Array.from({length:80},()=>({
+    x:Math.random()*W, y:Math.random()*H,
+    hue:Math.random()*360, r:Math.random()*3+1,
+    nx:Math.random()*100, ny:Math.random()*100
+  }));
+  function drawH(){
+    ctx.fillStyle='rgba(7,7,15,0.15)';
+    ctx.fillRect(0,0,W,H);
+    pts.forEach(p=>{
+      p.x = snoise(p.nx, t)*W;
+      p.y = snoise(p.ny+50, t)*H;
+      p.nx += 0.002; p.ny += 0.002;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`hsla(${(p.hue+t*30)%360},70%,65%,0.6)`;
+      ctx.fill();
+    });
+    t += 0.003;
+    requestAnimationFrame(drawH);
+  }
+  drawH();
+})();
+
+// ============================================================
+//  DEMO 1 — setup/draw
+// ============================================================
+(()=>{
+  const cv = document.getElementById('d1');
+  const ctx = cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  let frame=0, mx=W/2, my=H/2, ang=0;
+  const fade = document.getElementById('d1fade');
+  const size = document.getElementById('d1size');
+  const fadev = document.getElementById('d1fadev');
+  const sizev = document.getElementById('d1sizev');
+  fade.addEventListener('input',()=>fadev.textContent=fade.value);
+  size.addEventListener('input',()=>sizev.textContent=size.value);
+
+  function draw(){
+    ctx.fillStyle=`rgba(7,7,20,${fade.value/255})`;
+    ctx.fillRect(0,0,W,H);
+    ang+=0.018;
+    mx=W/2+Math.sin(ang)*W*0.32;
+    my=H/2+Math.sin(ang*1.7)*H*0.28;
+    const r = parseInt(size.value)*(0.6+0.4*Math.sin(frame*0.05));
+    const hue=(mx/W*280+frame*0.5)%360;
+    ctx.beginPath();
+    ctx.arc(mx,my,r,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${hue},78%,62%,0.7)`;
+    ctx.fill();
+    ctx.strokeStyle=`hsla(${hue},40%,80%,0.3)`;
+    ctx.lineWidth=1.5;
+    ctx.stroke();
+    // coordinate label
+    ctx.fillStyle='rgba(110,120,148,0.7)';
+    ctx.font='10px monospace';
+    ctx.fillText(`(${Math.round(mx)}, ${Math.round(my)})`,mx+r+4,my);
+    frame++;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ============================================================
+//  DEMO 2 — random walk comparison
+// ============================================================
+(()=>{
+  const cv=document.getElementById('d2');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  let ux=W/4,uy=H/2,gx=3*W/4,gy=H/2;
+  const step=document.getElementById('d2step');
+  const stepv=document.getElementById('d2stepv');
+  const resetBtn=document.getElementById('d2reset');
+  step.addEventListener('input',()=>stepv.textContent=step.value);
+
+  function gauss(){
+    let u=0,v=0;
+    while(!u)u=Math.random();
+    while(!v)v=Math.random();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+  }
+
+  function initBg(){
+    ctx.fillStyle='#090914';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(0,212,255,0.7)';ctx.font='10px monospace';
+    ctx.fillText('uniform random()',8,16);
+    ctx.fillStyle='rgba(255,112,67,0.7)';
+    ctx.fillText('randomGaussian()',W/2+8,16);
+    ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();
+  }
+  initBg();
+
+  resetBtn.addEventListener('click',()=>{
+    ux=W/4;uy=H/2;gx=3*W/4;gy=H/2;
+    initBg();
+  });
+
+  let running=true;
+  function walk(){
+    const s=parseInt(step.value);
+    ux+=(Math.random()*2-1)*s;uy+=(Math.random()*2-1)*s;
+    ux=Math.max(2,Math.min(W/2-2,ux));uy=Math.max(2,Math.min(H-2,uy));
+    ctx.beginPath();ctx.arc(ux,uy,1.5,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,212,255,0.55)';ctx.fill();
+    gx+=gauss()*s*0.55;gy+=gauss()*s*0.55;
+    gx=Math.max(W/2+2,Math.min(W-2,gx));gy=Math.max(2,Math.min(H-2,gy));
+    ctx.beginPath();ctx.arc(gx,gy,1.5,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,112,67,0.55)';ctx.fill();
+    requestAnimationFrame(walk);
+  }
+  walk();
+})();
+
+// ============================================================
+//  DEMO 3 — Perlin noise lines
+// ============================================================
+(()=>{
+  const cv=document.getElementById('d3');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  let t=0;
+  const scaleR=document.getElementById('d3scale');
+  const scalev=document.getElementById('d3scalev');
+  const speedR=document.getElementById('d3speed');
+  const speedv=document.getElementById('d3speedv');
+  const linesR=document.getElementById('d3lines');
+  const linesv=document.getElementById('d3linesv');
+  scaleR.addEventListener('input',()=>scalev.textContent=(scaleR.value/1000).toFixed(3));
+  speedR.addEventListener('input',()=>speedv.textContent=(speedR.value/1000).toFixed(3));
+  linesR.addEventListener('input',()=>linesv.textContent=linesR.value);
+
+  function draw(){
+    ctx.fillStyle='rgba(7,7,20,0.18)';ctx.fillRect(0,0,W,H);
+    const sc=scaleR.value/1000, n=parseInt(linesR.value);
+    for(let i=0;i<n;i++){
+      const x1=snoise(i*sc*80,t)*W;
+      const y1=snoise(i*sc*80+11,t)*H;
+      const x2=snoise(i*sc*80+55,t+0.1)*W;
+      const y2=snoise(i*sc*80+66,t+0.1)*H;
+      const hue=(snoise(i*0.05,t*0.4)*280+160)%360;
+      ctx.strokeStyle=`hsla(${hue},72%,62%,0.45)`;
+      ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    }
+    t+=speedR.value/1000;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ============================================================
+//  DEMO 4 — Fractal Tree
+// ============================================================
+(()=>{
+  const cv=document.getElementById('d4');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  let frame=0;
+  const depthR=document.getElementById('d4depth');
+  const depthv=document.getElementById('d4depthv');
+  const angleR=document.getElementById('d4angle');
+  const anglev=document.getElementById('d4anglev');
+  const ratioR=document.getElementById('d4ratio');
+  const ratiov=document.getElementById('d4ratiov');
+  const swayR=document.getElementById('d4sway');
+  const swayv=document.getElementById('d4swayv');
+  depthR.addEventListener('input',()=>depthv.textContent=depthR.value);
+  angleR.addEventListener('input',()=>anglev.textContent=angleR.value+'°');
+  ratioR.addEventListener('input',()=>ratiov.textContent=ratioR.value+'%');
+  swayR.addEventListener('input',()=>swayv.textContent=swayR.value);
+
+  function branch(len,depth){
+    if(depth>parseInt(depthR.value)||len<3)return;
+    const sw=Math.max(0.5,(len/100)*6);
+    ctx.lineWidth=sw;
+    const g=Math.min(255,80+depth*22);
+    ctx.strokeStyle=`rgba(60,${g},60,${0.9-depth*0.06})`;
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-len);ctx.stroke();
+    ctx.save();ctx.translate(0,-len);
+    const sway=Math.sin(frame*0.025+depth*0.6)*(swayR.value/20)*Math.PI/180*15;
+    const ang=parseFloat(angleR.value)*Math.PI/180;
+    const ratio=parseFloat(ratioR.value)/100;
+    ctx.save();ctx.rotate(-ang+sway);branch(len*ratio,depth+1);ctx.restore();
+    ctx.save();ctx.rotate(ang+sway);branch(len*ratio,depth+1);ctx.restore();
+    ctx.restore();
+  }
+
+  function draw(){
+    ctx.fillStyle='rgba(7,7,20,0.55)';ctx.fillRect(0,0,W,H);
+    ctx.save();ctx.translate(W/2,H-10);
+    branch(80,0);
+    ctx.restore();
+    frame++;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ============================================================
+//  DEMO 5 — Particle System
+// ============================================================
+(()=>{
+  const cv=document.getElementById('d5');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const gravR=document.getElementById('d5grav');
+  const gravv=document.getElementById('d5gravv');
+  const velR=document.getElementById('d5vel');
+  const velv=document.getElementById('d5velv');
+  const lifeR=document.getElementById('d5life');
+  const lifev=document.getElementById('d5lifev');
+  const clearBtn=document.getElementById('d5clear');
+  gravR.addEventListener('input',()=>gravv.textContent=(gravR.value/100).toFixed(2));
+  velR.addEventListener('input',()=>velv.textContent=velR.value);
+  lifeR.addEventListener('input',()=>lifev.textContent=lifeR.value);
+
+  let particles=[];
+  class Particle{
+    constructor(x,y,burst=false){
+      this.x=x;this.y=y;
+      const spd=parseFloat(velR.value)*(burst?1.5:0.7);
+      const ang=Math.random()*Math.PI*2;
+      this.vx=Math.cos(ang)*spd*(0.5+Math.random());
+      this.vy=Math.sin(ang)*spd*(0.5+Math.random())-(burst?3:0);
+      this.life=this.maxLife=parseInt(lifeR.value)*(0.6+Math.random()*0.8);
+      this.hue=Math.random()*280+160;
+    }
+    update(){
+      this.vy+=parseFloat(gravR.value)/100;
+      this.x+=this.vx;this.y+=this.vy;
+      this.life--;
+    }
+    draw(){
+      const a=this.life/this.maxLife;
+      const sz=a*10+2;
+      ctx.beginPath();ctx.arc(this.x,this.y,sz/2,0,Math.PI*2);
+      ctx.fillStyle=`hsla(${this.hue},75%,65%,${a*0.8})`;
+      ctx.fill();
+    }
+    dead(){return this.life<=0;}
+  }
+
+  cv.addEventListener('click',e=>{
+    const r=cv.getBoundingClientRect();
+    const x=e.clientX-r.left, y=e.clientY-r.top;
+    for(let i=0;i<60;i++) particles.push(new Particle(x,y,true));
+  });
+  clearBtn.addEventListener('click',()=>particles=[]);
+
+  // auto emitter
+  let autoAng=0;
+  function draw(){
+    ctx.fillStyle='rgba(7,7,20,0.22)';ctx.fillRect(0,0,W,H);
+    autoAng+=0.025;
+    const ax=W*0.5+Math.sin(autoAng)*W*0.25;
+    const ay=H*0.4+Math.cos(autoAng*0.7)*H*0.2;
+    for(let i=0;i<2;i++) particles.push(new Particle(ax,ay));
+    particles=particles.filter(p=>{p.update();p.draw();return!p.dead();});
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ============================================================
+//  DEMO 6 — Flow Field
+// ============================================================
+(()=>{
+  const cv=document.getElementById('d6');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const scaleR=document.getElementById('d6scale');
+  const scalev=document.getElementById('d6scalev');
+  const resR=document.getElementById('d6res');
+  const resv=document.getElementById('d6resv');
+  const speedR=document.getElementById('d6speed');
+  const speedv=document.getElementById('d6speedv');
+  const arrowR=document.getElementById('d6arrows');
+  const arrowv=document.getElementById('d6arrowsv');
+  scaleR.addEventListener('input',()=>scalev.textContent=(scaleR.value/100).toFixed(2));
+  resR.addEventListener('input',()=>resv.textContent=resR.value+'px');
+  speedR.addEventListener('input',()=>speedv.textContent=(speedR.value/1000).toFixed(3));
+  arrowR.addEventListener('input',()=>arrowv.textContent=arrowR.value==='1'?'ON':'OFF');
+
+  const movers=Array.from({length:200},()=>({x:Math.random()*W,y:Math.random()*H,vx:0,vy:0}));
+  let t=0;
+
+  function arrow(x,y,angle,len){
+    const ex=x+Math.cos(angle)*len, ey=y+Math.sin(angle)*len;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(ex,ey);
+    const ha=0.4, hl=4;
+    ctx.moveTo(ex,ey);
+    ctx.lineTo(ex-Math.cos(angle-ha)*hl,ey-Math.sin(angle-ha)*hl);
+    ctx.moveTo(ex,ey);
+    ctx.lineTo(ex-Math.cos(angle+ha)*hl,ey-Math.sin(angle+ha)*hl);
+    ctx.stroke();
+  }
+
+  function draw(){
+    ctx.fillStyle='rgba(7,7,20,0.2)';ctx.fillRect(0,0,W,H);
+    const RES=parseInt(resR.value);
+    const sc=scaleR.value/100;
+    const showArrows=arrowR.value==='1';
+
+    if(showArrows){
+      ctx.strokeStyle='rgba(155,114,245,0.25)';ctx.lineWidth=0.8;
+      for(let x=RES/2;x<W;x+=RES){
+        for(let y=RES/2;y<H;y+=RES){
+          const angle=snoise(x*sc*0.05,y*sc*0.05,t)*Math.PI*4;
+          arrow(x,y,angle,RES*0.45);
+        }
+      }
+    }
+
+    movers.forEach(m=>{
+      const angle=snoise(m.x*sc*0.05,m.y*sc*0.05,t)*Math.PI*4;
+      m.vx+=(Math.cos(angle)*0.5);m.vy+=(Math.sin(angle)*0.5);
+      const spd=Math.sqrt(m.vx*m.vx+m.vy*m.vy);
+      if(spd>2){m.vx=m.vx/spd*2;m.vy=m.vy/spd*2;}
+      m.x+=m.vx;m.y+=m.vy;
+      if(m.x<0)m.x=W;if(m.x>W)m.x=0;
+      if(m.y<0)m.y=H;if(m.y>H)m.y=0;
+      ctx.beginPath();ctx.arc(m.x,m.y,1.2,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,212,255,0.5)';ctx.fill();
+    });
+    t+=speedR.value/1000;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ============================================================
+//  DEMO 7 — Lissajous / Rose
+// ============================================================
+(()=>{
+  const cv=document.getElementById('d7');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const aR=document.getElementById('d7a');
+  const av=document.getElementById('d7av');
+  const bR=document.getElementById('d7b');
+  const bv=document.getElementById('d7bv');
+  const dR=document.getElementById('d7d');
+  const dv=document.getElementById('d7dv');
+  const modeR=document.getElementById('d7mode');
+  const modev=document.getElementById('d7modev');
+  const redrawBtn=document.getElementById('d7redraw');
+  const piFracs=['0','π/4','π/2','3π/4','π','5π/4','3π/2','7π/4','2π'];
+  aR.addEventListener('input',()=>av.textContent=aR.value);
+  bR.addEventListener('input',()=>bv.textContent=bR.value);
+  dR.addEventListener('input',()=>dv.textContent=piFracs[dR.value]);
+  modeR.addEventListener('input',()=>modev.textContent=modeR.value==='0'?'リサージュ':'花曲線');
+
+  let animT=0,drawing=true;
+  function startDraw(){
+    ctx.fillStyle='#090914';ctx.fillRect(0,0,W,H);
+    animT=0;drawing=true;
+  }
+  redrawBtn.addEventListener('click',startDraw);
+  [aR,bR,dR,modeR].forEach(r=>r.addEventListener('input',startDraw));
+
+  function draw(){
+    if(!drawing){requestAnimationFrame(draw);return;}
+    const a=parseInt(aR.value), b=parseInt(bR.value);
+    const delta=parseInt(dR.value)*Math.PI/4;
+    const mode=modeR.value;
+    const R=Math.min(W,H)*0.43;
+    const cx=W/2, cy=H/2;
+    const steps=80;
+    const totalT=mode==='0'?Math.PI*2*Math.max(a,b):Math.PI*2;
+
+    ctx.lineWidth=1.5;
+    for(let i=0;i<steps;i++){
+      const t1=animT, t2=animT+totalT/2000;
+      let x1,y1,x2,y2;
+      if(mode==='0'){
+        x1=cx+R*Math.sin(a*t1+delta); y1=cy+R*Math.sin(b*t1);
+        x2=cx+R*Math.sin(a*t2+delta); y2=cy+R*Math.sin(b*t2);
+      } else {
+        const r1=R*Math.cos(a*t1), r2=R*Math.cos(a*t2);
+        x1=cx+r1*Math.cos(t1); y1=cy+r1*Math.sin(t1);
+        x2=cx+r2*Math.cos(t2); y2=cy+r2*Math.sin(t2);
+      }
+      const hue=(animT/totalT*360)%360;
+      ctx.strokeStyle=`hsla(${hue},85%,65%,0.7)`;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      animT=t2;
+      if(animT>=totalT){drawing=false;break;}
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ============================================================
+//  DEMO 8 — Combined generative art
+// ============================================================
+(()=>{
+  const cv=document.getElementById('d8');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  let t=0;
+  const NUM=300;
+  const movers=Array.from({length:NUM},()=>({
+    x:Math.random()*W,y:Math.random()*H,
+    vx:0,vy:0,hue:Math.random()*360,age:Math.random()*200
+  }));
+
+  function draw(){
+    ctx.fillStyle='rgba(7,7,18,0.12)';ctx.fillRect(0,0,W,H);
+    movers.forEach(m=>{
+      const angle=snoise(m.x*0.004,m.y*0.004,t)*Math.PI*4+t;
+      m.vx=(m.vx+Math.cos(angle)*0.4)*0.97;
+      m.vy=(m.vy+Math.sin(angle)*0.4)*0.97;
+      const prev={x:m.x,y:m.y};
+      m.x+=m.vx;m.y+=m.vy;
+      if(m.x<0)m.x=W;if(m.x>W)m.x=0;
+      if(m.y<0)m.y=H;if(m.y>H)m.y=0;
+      m.hue=(m.hue+0.3)%360;
+      m.age++;
+      const alpha=0.4+0.3*Math.sin(m.age*0.05);
+      ctx.strokeStyle=`hsla(${m.hue},75%,62%,${alpha})`;
+      ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.moveTo(prev.x,prev.y);ctx.lineTo(m.x,m.y);ctx.stroke();
+    });
+    t+=0.004;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ============================================================
+//  QUIZ LOGIC
+// ============================================================
+const ANSWERS = {1:0, 2:1, 3:1, 4:2, 5:1, 6:1, 7:2, 8:1};
+const EXPLANATIONS = {
+  1: '✅ 正解！<code>frameRate(24)</code> は <code>draw()</code> が1秒間に呼ばれる目標回数を24に設定します。処理が重い場合は24に達しないこともあります。デフォルトは60fps。',
+  2: '✅ 正解！<code>random()</code> は指定範囲内を一様分布で出力。<code>randomGaussian()</code> は正規分布（平均0、標準偏差1）で、中心付近の値が高確率で出ます。自然物の揺れなどの表現に適しています。',
+  3: '✅ 正解！Perlinノイズの最大の特徴は<strong>連続性（滑らかさ）</strong>です。出力は0〜1の範囲（-1〜1ではない）、<code>noise(x,y)</code> は単純な積とは異なるグラジェントノイズです。',
+  4: '✅ 正解！深さ0から始まり depth > 7 で止まるので、最大深さは7。各深さで2倍に増えるため 2<sup>7</sup> = <strong>128本</strong>が葉の枝の最大数です。',
+  5: '✅ 正解！抗力 F = −kv は速度に比例して反対向きに働くため、速度が大きいほど制動力も大きくなります。外力がない場合、速度は指数関数的に<strong>0に収束</strong>します（v(t) = v₀ × e^(−kt/m)）。',
+  6: '✅ 正解！<code>noise()</code> は隣接する入力値に対して滑らかに連続した出力を返すため、隣接グリッドの方向が自然につながります。これにより粒子が「流れる」ように動きます。',
+  7: '✅ 正解！花曲線 r = cos(nθ) では、<strong>n が偶数のとき 2n 枚</strong>の花弁が描かれます。n = 4 なら 2×4 = <strong>8枚</strong>。n が奇数（例：n=3）なら n 枚（3枚）になります。',
+  8: '✅ 正解！<code>noiseSeed(n)</code> でPerlinノイズの種を、<code>randomSeed(n)</code> で <code>random()</code> の種を固定することで、同じシード番号なら完全に同じパターンが再現できます。'
+};
+const WRONG_EXP = {
+  1: '❌ 不正解。<code>frameRate(24)</code> はスケッチを停止させません。draw() の呼び出し頻度を毎秒約24回に設定するものです。',
+  2: '❌ 不正解。<code>random()</code> は整数・小数の区別なく float を返します。両者の根本的な違いは確率分布にあります。',
+  3: '❌ 不正解。Perlinノイズの出力は 0〜1 の範囲で、−1〜1 ではありません。また <code>noise(x,y)</code> は積とは全く異なる多次元グラジェントノイズです。',
+  4: '❌ 不正解。再帰の最大深さが7なので、分岐数は 2<sup>7</sup> = 128 本になります。深さと枝数の対応を整理しましょう。',
+  5: '❌ 不正解。抗力は外力がないときに速度をゼロに収束させます。終端速度が生じるのは重力などの一定外力と釣り合うときです。',
+  6: '❌ 不正解。<code>noise()</code> と <code>random()</code> の速度差は主な理由ではありません。最大の利点は出力の連続性（空間的な滑らかさ）です。',
+  7: '❌ 不正解。n が偶数のとき花弁は 2n 枚。n=4 なら 8 枚です。n が奇数なら n 枚になります。',
+  8: '❌ 不正解。再現性を持たせるには乱数の種（seed）を固定する必要があります。<code>noiseSeed()</code> と <code>randomSeed()</code> の両方を設定しましょう。'
+};
+
+let score=0;
+const answered=new Set();
+document.querySelectorAll('.qc').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const q=parseInt(btn.dataset.q);
+    if(answered.has(q))return;
+    answered.add(q);
+    const chosen=parseInt(btn.dataset.a);
+    const correct=ANSWERS[q];
+    const res=document.getElementById('qr'+q);
+    document.querySelectorAll(`.qc[data-q="${q}"]`).forEach(b=>{
+      b.disabled=true;
+      if(parseInt(b.dataset.a)===correct)b.classList.add('ok');
+    });
+    if(chosen===correct){
+      btn.classList.add('ok');
+      res.className='qr ok';
+      res.innerHTML=EXPLANATIONS[q];
+      score++;
+    } else {
+      btn.classList.add('ng');
+      res.className='qr ng';
+      res.innerHTML=WRONG_EXP[q];
+    }
+    document.getElementById('snum').textContent=score;
+  });
+});
+
+// ============================================================
+//  NAV ACTIVE + PROGRESS BAR
+// ============================================================
+const sections=document.querySelectorAll('section[id]');
+const navLinks=document.querySelectorAll('nav a');
+const pb=document.getElementById('pb');
+window.addEventListener('scroll',()=>{
+  const scrollY=window.scrollY;
+  const docH=document.documentElement.scrollHeight-window.innerHeight;
+  pb.style.width=(scrollY/docH*100)+'%';
+  sections.forEach(sec=>{
+    const top=sec.offsetTop-100;
+    const bottom=top+sec.offsetHeight;
+    if(scrollY>=top&&scrollY<bottom){
+      navLinks.forEach(a=>a.classList.toggle('act',a.getAttribute('href')==='#'+sec.id));
+    }
+  });
+},{passive:true});
+</script>
+</body>
+</html>
