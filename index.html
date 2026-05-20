@@ -108,38 +108,51 @@
   <div class="setup-box">
     <h1>インタラクティブアート 設定</h1>
 
-    <div class="form-group">
-      <label>カメラ選択（Camo Studio を選択）</label>
-      <select id="camera-select"><option value="">読み込み中...</option></select>
-      <button id="btn-retry-camera" style="margin-top:6px;background:#333;color:#aaa;border:1px solid #555;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;">再取得</button>
+    <!-- STEP 1: カメラ許可 -->
+    <div id="step-permission">
+      <p style="font-size:13px;color:#aaa;line-height:1.8;margin-bottom:18px">
+        Webカメラ（Camo Studio）を使用します。<br>
+        ボタンを押してカメラへのアクセスを許可してください。
+      </p>
+      <button class="btn-start" id="btn-request-camera">📷 カメラへのアクセスを許可する</button>
+      <div class="error-msg" id="perm-error"></div>
     </div>
 
-    <div class="form-group">
-      <label>感度（差分閾値） — 低いほど敏感</label>
-      <div class="range-row">
-        <input type="range" id="threshold-init" min="5" max="100" value="25">
-        <span class="range-val" id="threshold-init-val">25</span>
+    <!-- STEP 2: 設定（許可後に表示） -->
+    <div id="step-settings" style="display:none">
+      <div class="form-group">
+        <label>カメラ選択</label>
+        <select id="camera-select"></select>
+        <button id="btn-retry-camera" style="margin-top:6px;background:#333;color:#aaa;border:1px solid #555;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;">🔄 カメラ一覧を再取得</button>
       </div>
-    </div>
 
-    <div class="form-group">
-      <label>モード切替間隔（秒）</label>
-      <div class="range-row">
-        <input type="range" id="mode-interval" min="10" max="180" value="60" step="10">
-        <span class="range-val" id="mode-interval-val">60</span>
+      <div class="form-group">
+        <label>感度（差分閾値） — 低いほど敏感</label>
+        <div class="range-row">
+          <input type="range" id="threshold-init" min="5" max="100" value="25">
+          <span class="range-val" id="threshold-init-val">25</span>
+        </div>
       </div>
-    </div>
 
-    <div class="form-group">
-      <label>音を有効にする</label>
-      <select id="sound-enabled">
-        <option value="1">有効</option>
-        <option value="0">無効</option>
-      </select>
-    </div>
+      <div class="form-group">
+        <label>モード切替間隔（秒）</label>
+        <div class="range-row">
+          <input type="range" id="mode-interval" min="10" max="180" value="60" step="10">
+          <span class="range-val" id="mode-interval-val">60</span>
+        </div>
+      </div>
 
-    <button class="btn-start" id="btn-start">開始</button>
-    <div class="error-msg" id="error-msg"></div>
+      <div class="form-group">
+        <label>音を有効にする</label>
+        <select id="sound-enabled">
+          <option value="1">有効</option>
+          <option value="0">無効</option>
+        </select>
+      </div>
+
+      <button class="btn-start" id="btn-start">▶ 開始</button>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
   </div>
 </div>
 
@@ -220,37 +233,25 @@ const WAVE_TYPES = ['sine', 'sawtooth', 'square'];
 
 // ---- Setup Screen ----
 
-const setupScreen = document.getElementById('setup-screen');
+const setupScreen  = document.getElementById('setup-screen');
 const cameraSelect = document.getElementById('camera-select');
-const thresholdInit = document.getElementById('threshold-init');
-const thresholdInitVal = document.getElementById('threshold-init-val');
-const modeIntervalInput = document.getElementById('mode-interval');
-const modeIntervalVal = document.getElementById('mode-interval-val');
-const soundEnabledInput = document.getElementById('sound-enabled');
-const btnStart = document.getElementById('btn-start');
-const errorMsg = document.getElementById('error-msg');
+const btnStart     = document.getElementById('btn-start');
+const errorMsg     = document.getElementById('error-msg');
 
+function showError(msg) {
+  errorMsg.textContent = msg;
+  errorMsg.style.display = 'block';
+}
+function showPermError(msg) {
+  const el = document.getElementById('perm-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// カメラ一覧をセレクトに反映（許可済み前提）
 async function populateCameras() {
-  if (!navigator.mediaDevices) {
-    cameraSelect.innerHTML = '<option value="">mediaDevices 未対応 — HTTPSかlocalhostで開いてください</option>';
-    showError('このブラウザ/URLではカメラAPIが使えません。Chromeでファイルを開き直すか localhost 経由で開いてください。');
-    return;
-  }
-
-  // Step1: ラベルなしで一覧取得（許可不要）
-  let devices = await navigator.mediaDevices.enumerateDevices();
-  let videoDevices = devices.filter(d => d.kind === 'videoinput');
-
-  // Step2: 許可を取得してラベルを取得
-  try {
-    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
-    tmp.getTracks().forEach(t => t.stop());
-    devices = await navigator.mediaDevices.enumerateDevices();
-    videoDevices = devices.filter(d => d.kind === 'videoinput');
-  } catch (e) {
-    // 許可拒否でもIDだけで続行
-    showError('カメラ許可が得られませんでした（ラベルなしで表示）: ' + e.message);
-  }
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const videoDevices = devices.filter(d => d.kind === 'videoinput');
 
   cameraSelect.innerHTML = '';
   if (videoDevices.length === 0) {
@@ -263,30 +264,76 @@ async function populateCameras() {
     opt.value = d.deviceId;
     const label = d.label || `カメラ ${i + 1}`;
     opt.textContent = label;
+    // Camoを優先選択、なければ最初のカメラ
     if (label.toLowerCase().includes('camo')) opt.selected = true;
     cameraSelect.appendChild(opt);
   });
 }
 
-document.getElementById('btn-retry-camera').addEventListener('click', () => {
+// STEP 1: 許可ボタン
+document.getElementById('btn-request-camera').addEventListener('click', async function () {
+  const btn = this;
+  btn.disabled = true;
+  btn.textContent = '許可を求めています...';
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showPermError('このブラウザはカメラAPIに対応していません。Chromeで http://localhost:8080 を開いてください。');
+    btn.disabled = false;
+    btn.textContent = '📷 カメラへのアクセスを許可する';
+    return;
+  }
+
+  try {
+    // ユーザー操作から呼ぶことで許可ダイアログが確実に表示される
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop()); // 一時ストリームを解放
+
+    // 許可済みになったのでラベル付きで一覧取得
+    await populateCameras();
+
+    // STEP 2 に切り替え
+    document.getElementById('step-permission').style.display = 'none';
+    document.getElementById('step-settings').style.display = 'block';
+  } catch (e) {
+    let msg = 'カメラへのアクセスが拒否されました。';
+    if (e.name === 'NotFoundError')      msg = 'カメラが見つかりません。Camo Studio が起動しているか確認してください。';
+    if (e.name === 'NotAllowableError')  msg = 'カメラへのアクセスが許可されていません。';
+    if (e.name === 'NotReadableError')   msg = 'カメラが他のアプリに使用中です。Camo Studio の接続を確認してください。';
+    showPermError(msg + '（' + e.name + '）');
+    btn.disabled = false;
+    btn.textContent = '📷 もう一度試す';
+  }
+});
+
+// 再取得ボタン
+document.getElementById('btn-retry-camera').addEventListener('click', async () => {
   errorMsg.style.display = 'none';
-  cameraSelect.innerHTML = '<option value="">読み込み中...</option>';
-  populateCameras();
+  cameraSelect.innerHTML = '<option value="">取得中...</option>';
+  try {
+    // 再度ストリームを取得してラベルを確実に更新
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop());
+    await populateCameras();
+  } catch (e) {
+    showError('カメラ一覧の取得に失敗: ' + e.message);
+  }
 });
 
-thresholdInit.addEventListener('input', () => {
-  thresholdInitVal.textContent = thresholdInit.value;
+// スライダーの表示更新
+document.getElementById('threshold-init').addEventListener('input', function () {
+  document.getElementById('threshold-init-val').textContent = this.value;
 });
-modeIntervalInput.addEventListener('input', () => {
-  modeIntervalVal.textContent = modeIntervalInput.value;
+document.getElementById('mode-interval').addEventListener('input', function () {
+  document.getElementById('mode-interval-val').textContent = this.value;
 });
 
-populateCameras();
-
+// STEP 2: 開始ボタン
 btnStart.addEventListener('click', async () => {
-  threshold = parseInt(thresholdInit.value);
-  modeInterval = parseInt(modeIntervalInput.value) * 1000;
-  soundEnabled = soundEnabledInput.value === '1';
+  errorMsg.style.display = 'none';
+
+  threshold     = parseInt(document.getElementById('threshold-init').value);
+  modeInterval  = parseInt(document.getElementById('mode-interval').value) * 1000;
+  soundEnabled  = document.getElementById('sound-enabled').value === '1';
 
   const deviceId = cameraSelect.value;
   if (!deviceId) { showError('カメラを選択してください'); return; }
@@ -307,14 +354,9 @@ btnStart.addEventListener('click', async () => {
   } catch (e) {
     showError('カメラ接続失敗: ' + e.message);
     btnStart.disabled = false;
-    btnStart.textContent = '開始';
+    btnStart.textContent = '▶ 開始';
   }
 });
-
-function showError(msg) {
-  errorMsg.textContent = msg;
-  errorMsg.style.display = 'block';
-}
 
 // ---- Audio ----
 
@@ -403,11 +445,17 @@ document.getElementById('btn-design').addEventListener('click', () => {
 });
 
 document.getElementById('btn-setup').addEventListener('click', () => {
-  // Pause and go back to setup
   if (modeTimer) clearInterval(modeTimer);
-  setupScreen.classList.remove('hidden');
   ctx.clearRect(0, 0, W, H);
-  populateCameras();
+  prevImageData = null;
+  // 設定画面をSTEP1から表示しなおす
+  errorMsg.style.display = 'none';
+  document.getElementById('perm-error').style.display = 'none';
+  document.getElementById('btn-request-camera').disabled = false;
+  document.getElementById('btn-request-camera').textContent = '📷 カメラへのアクセスを許可する';
+  document.getElementById('step-permission').style.display = 'block';
+  document.getElementById('step-settings').style.display = 'none';
+  setupScreen.classList.remove('hidden');
 });
 
 document.getElementById('btn-threshold').addEventListener('click', () => {
