@@ -331,20 +331,35 @@ document.getElementById('mode-interval').addEventListener('input', function () {
 btnStart.addEventListener('click', async () => {
   errorMsg.style.display = 'none';
 
-  threshold     = parseInt(document.getElementById('threshold-init').value);
-  modeInterval  = parseInt(document.getElementById('mode-interval').value) * 1000;
-  soundEnabled  = document.getElementById('sound-enabled').value === '1';
+  threshold    = parseInt(document.getElementById('threshold-init').value);
+  modeInterval = parseInt(document.getElementById('mode-interval').value) * 1000;
+  soundEnabled = document.getElementById('sound-enabled').value === '1';
 
-  const deviceId = cameraSelect.value;
-  if (!deviceId) { showError('カメラを選択してください'); return; }
+  // カメラが1つも表示されていない場合のみ弾く
+  if (cameraSelect.options.length === 0) {
+    showError('カメラが見つかりません。「カメラ一覧を再取得」を押してください。');
+    return;
+  }
 
   btnStart.disabled = true;
   btnStart.textContent = '接続中...';
 
+  const deviceId = cameraSelect.value; // 空文字の場合もあるが許容する
+
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
-    });
+    // deviceId が取得できていれば exact 指定、空の場合はラベルで検索して fallback
+    let constraints;
+    if (deviceId) {
+      constraints = { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+    } else {
+      // deviceId が空 = 仮想カメラ等で ID が取れない場合
+      // カメラ名に 'camo' が含まれているか、選択インデックスを使って探す
+      const selectedLabel = cameraSelect.options[cameraSelect.selectedIndex]?.textContent ?? '';
+      console.warn('deviceId が空です。ラベル:', selectedLabel, '— video:true で接続します');
+      constraints = { video: { width: { ideal: 1280 }, height: { ideal: 720 } } };
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
     await new Promise(resolve => { video.onloadedmetadata = resolve; });
     await video.play();
@@ -352,7 +367,10 @@ btnStart.addEventListener('click', async () => {
     setupScreen.classList.add('hidden');
     initArt();
   } catch (e) {
-    showError('カメラ接続失敗: ' + e.message);
+    let msg = 'カメラ接続失敗: ' + e.message;
+    if (e.name === 'NotReadableError') msg = 'カメラが他のアプリに使用中です。Camo Studio の接続を確認してください。';
+    if (e.name === 'OverconstrainedError') msg = '指定したカメラに接続できません。「カメラ一覧を再取得」を押して選び直してください。';
+    showError(msg);
     btnStart.disabled = false;
     btnStart.textContent = '▶ 開始';
   }
