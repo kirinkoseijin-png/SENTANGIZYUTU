@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>インタラクティブアートの仕組みを学ぼう — Evoloop & 木漏れ日</title>
+<style>
+/* ===== BASE ===== */
+:root{
+  --bg:#07070f; --bg2:#0d0d1a; --card:#111125; --card2:#161630;
+  --text:#e0e0f0; --muted:#7070a0;
+  --ev:#44ee66;   /* Evoloop green */
+  --km:#f0c040;   /* Komorebi gold */
+  --blue:#6aafff; --purple:#a88fff; --red:#ff6584;
+  --radius:14px; --max:860px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;
+     font-size:15px;line-height:1.7}
+a{color:var(--blue);text-decoration:none}
+
+/* ===== HERO ===== */
+.hero{
+  background:linear-gradient(160deg,#050510 0%,#0a1a08 50%,#100a00 100%);
+  padding:56px 24px 40px; text-align:center;
+  border-bottom:1px solid #1a1a3a;
+}
+.hero-tag{display:inline-block;background:rgba(108,175,255,.12);
+  border:1px solid rgba(108,175,255,.3);border-radius:99px;
+  padding:4px 16px;font-size:12px;color:var(--blue);margin-bottom:16px;letter-spacing:.5px}
+.hero h1{font-size:clamp(22px,4vw,34px);font-weight:800;margin-bottom:8px;
+  background:linear-gradient(90deg,var(--ev),var(--km));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .sub{font-size:14px;color:var(--muted);max-width:560px;margin:0 auto 24px}
+.art-links{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.art-link{
+  padding:10px 22px;border-radius:8px;font-size:13px;font-weight:bold;
+  border:1px solid;transition:opacity .15s;cursor:pointer;
+}
+.art-link:hover{opacity:.8}
+.art-link.ev{background:rgba(68,238,102,.1);border-color:var(--ev);color:var(--ev)}
+.art-link.km{background:rgba(240,192,64,.1);border-color:var(--km);color:var(--km)}
+
+/* ===== PROGRESS ===== */
+.progress-bar{
+  position:sticky;top:0;z-index:90;
+  background:rgba(7,7,15,.92);backdrop-filter:blur(8px);
+  border-bottom:1px solid #1a1a3a;padding:10px 24px;
+  display:flex;align-items:center;gap:16px;
+}
+.progress-track{flex:1;height:6px;background:#1a1a3a;border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;width:0;border-radius:3px;
+  background:linear-gradient(90deg,var(--ev),var(--km));transition:width .4s}
+.progress-label{font-size:11px;color:var(--muted);white-space:nowrap}
+.score-display{font-size:11px;color:var(--purple);white-space:nowrap}
+
+/* ===== LAYOUT ===== */
+.content{max-width:var(--max);margin:0 auto;padding:0 20px}
+.spacer{height:48px}
+
+/* ===== SECTION ===== */
+.section{
+  opacity:0;transform:translateY(28px);
+  transition:opacity .6s,transform .6s;
+  margin-bottom:0;
+}
+.section.visible{opacity:1;transform:none}
+.section-header{
+  display:flex;align-items:center;gap:16px;
+  margin-bottom:20px;padding-top:8px;
+}
+.step-badge{
+  min-width:44px;height:44px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:900;flex-shrink:0;
+  background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;
+}
+.step-badge.ev{background:linear-gradient(135deg,#1a6a2a,var(--ev));color:#001a08}
+.step-badge.km{background:linear-gradient(135deg,#6a4a00,var(--km));color:#1a0e00}
+.section-title{font-size:clamp(16px,2.5vw,22px);font-weight:800;margin-bottom:3px}
+.section-subtitle{font-size:12px;color:var(--muted)}
+.paper-tag{
+  display:inline-block;font-size:11px;font-weight:bold;
+  padding:2px 10px;border-radius:4px;margin-bottom:12px;
+}
+.paper-tag.ev{background:rgba(68,238,102,.12);color:var(--ev);border:1px solid rgba(68,238,102,.3)}
+.paper-tag.km{background:rgba(240,192,64,.12);color:var(--km);border:1px solid rgba(240,192,64,.3)}
+.paper-tag.both{background:rgba(108,175,255,.12);color:var(--blue);border:1px solid rgba(108,175,255,.3)}
+
+/* ===== CARD ===== */
+.card{background:var(--card);border-radius:var(--radius);padding:18px 20px;
+  margin-bottom:14px;border:1px solid #1e1e3a;line-height:1.8}
+.card p+p{margin-top:10px}
+strong{color:#fff}
+.highlight{
+  background:rgba(108,175,255,.08);border-left:3px solid var(--blue);
+  border-radius:0 8px 8px 0;padding:12px 16px;margin:14px 0;
+  font-size:14px;color:var(--text);
+}
+.highlight.ev{background:rgba(68,238,102,.06);border-color:var(--ev)}
+.highlight.km{background:rgba(240,192,64,.06);border-color:var(--km)}
+
+/* ===== KEYWORD ===== */
+.kw{display:inline-block;background:rgba(168,143,255,.15);
+  border:1px solid rgba(168,143,255,.4);border-radius:5px;
+  padding:1px 7px;font-weight:bold;color:var(--purple);font-size:.95em}
+.kw-ev{background:rgba(68,238,102,.12);border-color:rgba(68,238,102,.4);color:var(--ev)}
+.kw-km{background:rgba(240,192,64,.12);border-color:rgba(240,192,64,.4);color:var(--km)}
+
+/* ===== CODE ===== */
+.codeblock{
+  background:#030308;border-radius:8px;padding:14px 16px;
+  font-family:'Consolas','Courier New',monospace;font-size:12.5px;
+  overflow-x:auto;margin:10px 0;border:1px solid #1e1e3a;line-height:1.75;
+}
+.cm{color:#4a5060} .ck{color:var(--purple)} .cs{color:#ffd166}
+.cn{color:var(--ev)} .cv{color:#ff9060} .cf{color:var(--blue)}
+
+/* ===== ILLUST ===== */
+.illust-wrap{
+  background:var(--card2);border-radius:var(--radius);
+  padding:20px;margin:14px 0;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  border:1px solid #1e1e3a;
+}
+.illust-label{font-size:12px;color:var(--muted);text-align:center}
+
+/* ===== GRID 2COL ===== */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+@media(max-width:540px){.grid2{grid-template-columns:1fr}}
+.grid-card{background:var(--card);border-radius:10px;padding:14px 16px;border:1px solid #1e1e3a}
+.grid-card h4{font-size:13px;margin-bottom:8px}
+
+/* ===== FORMULA ===== */
+.formula{
+  background:#030308;border-radius:8px;padding:14px 20px;
+  font-family:'Consolas',monospace;font-size:15px;text-align:center;
+  border:1px solid #2a2a5a;color:#c8d8ff;margin:12px 0;letter-spacing:.3px;
+}
+
+/* ===== STEPS / FLOW ===== */
+.flow{display:flex;flex-direction:column;gap:8px}
+.flow-step{
+  background:var(--card2);border-radius:10px;padding:11px 15px;
+  border-left:4px solid var(--purple);
+  display:flex;align-items:center;gap:12px;font-size:14px;
+}
+.flow-step .num{
+  min-width:26px;height:26px;border-radius:50%;
+  background:var(--purple);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:bold;flex-shrink:0;
+}
+.flow-step.ev{border-color:var(--ev)} .flow-step.ev .num{background:var(--ev);color:#001a08}
+.flow-step.km{border-color:var(--km)} .flow-step.km .num{background:var(--km);color:#1a0e00}
+.flow-arrow{text-align:center;font-size:18px;color:var(--muted)}
+
+/* ===== STATE MACHINE ===== */
+.states{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;margin:14px 0}
+.state-box{
+  background:var(--card2);border-radius:8px;padding:10px 14px;text-align:center;
+  font-size:12px;min-width:80px;
+}
+.state-box .s-name{font-weight:bold;font-size:13px;margin-bottom:3px}
+.state-box.empty .s-name{color:var(--muted)}
+.state-box.alive .s-name{color:var(--ev)}
+.state-box.dying .s-name{color:var(--red)}
+.state-arrow{font-size:22px;color:var(--purple)}
+
+/* ===== QUIZ ===== */
+.quiz-wrap{
+  background:linear-gradient(135deg,#0e0e22,#0a0a18);
+  border-radius:var(--radius);padding:24px;
+  border:2px solid #2a2a5a;margin-top:24px;
+}
+.quiz-label{
+  display:inline-block;padding:3px 12px;border-radius:99px;
+  font-size:11px;font-weight:bold;letter-spacing:1px;margin-bottom:12px;
+}
+.quiz-label.both{background:var(--blue);color:#000}
+.quiz-label.ev{background:var(--ev);color:#001a08}
+.quiz-label.km{background:var(--km);color:#1a0e00}
+.quiz-q{font-size:16px;font-weight:700;margin-bottom:16px;line-height:1.5}
+.quiz-choices{display:flex;flex-direction:column;gap:8px}
+.choice-btn{
+  background:#141430;border:2px solid #2a2a5a;color:var(--text);
+  border-radius:10px;padding:11px 15px;font-size:13.5px;cursor:pointer;
+  text-align:left;transition:all .18s;display:flex;align-items:center;gap:10px;
+}
+.choice-btn:hover:not(:disabled){border-color:var(--purple);background:#1c1c42}
+.choice-btn.correct{border-color:var(--ev)!important;background:rgba(68,238,102,.1)!important}
+.choice-btn.wrong{border-color:var(--red)!important;background:rgba(255,101,132,.07)!important}
+.choice-btn:disabled{cursor:not-allowed}
+.choice-mark{
+  min-width:26px;height:26px;border-radius:50%;
+  background:#1e1e4a;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:bold;flex-shrink:0;
+}
+.choice-btn.correct .choice-mark{background:var(--ev);color:#001}
+.choice-btn.wrong .choice-mark{background:var(--red);color:#fff}
+.quiz-feedback{
+  margin-top:14px;padding:12px 16px;border-radius:8px;
+  font-size:13px;line-height:1.7;display:none;
+}
+.correct-fb{background:rgba(68,238,102,.08);border:1px solid rgba(68,238,102,.3);color:#ccffdd}
+.wrong-fb{background:rgba(255,101,132,.07);border:1px solid rgba(255,101,132,.3);color:#ffd0da}
+
+/* ===== FINAL ===== */
+#final-result{
+  display:none;text-align:center;padding:48px 24px;
+  background:linear-gradient(135deg,#0a0a1e,#080e06);
+  border-radius:var(--radius);border:1px solid #2a2a4a;margin:40px 0;
+}
+#final-score-big{font-size:56px;font-weight:900;margin:12px 0;
+  background:linear-gradient(90deg,var(--ev),var(--km));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#final-comment{font-size:17px;margin-bottom:8px}
+#final-detail{color:var(--muted);font-size:13px;margin-bottom:24px}
+.btn-restart{
+  display:inline-block;padding:12px 28px;
+  background:rgba(168,143,255,.15);color:var(--purple);
+  border:1px solid var(--purple);border-radius:8px;cursor:pointer;font-size:14px;
+}
+
+/* ===== COMPARE TABLE ===== */
+.cmp-table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0}
+.cmp-table th,.cmp-table td{
+  border:1px solid #1e1e3a;padding:9px 13px;text-align:left;
+}
+.cmp-table th{background:#0d0d1e;color:var(--muted);font-weight:normal;font-size:12px}
+.cmp-table td:first-child{color:var(--muted);font-size:12px}
+.ev-cell{color:var(--ev)}.km-cell{color:var(--km)}
+
+/* ===== CANVAS LABEL ===== */
+canvas{display:block;border-radius:8px}
+.demo-title{font-size:12px;color:var(--muted);text-align:center;margin-bottom:6px}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:480px){
+  .hero{padding:40px 16px 28px}
+  .art-links{flex-direction:column;align-items:center}
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">高校生向け 技術解説</div>
+  <h1>インタラクティブアートの仕組みを学ぼう</h1>
+  <p class="sub">Webカメラ・JavaScript・人工生命・光の物理を使った 2つのインタラクティブアート作品の技術を徹底解説</p>
+  <div class="art-links">
+    <a class="art-link ev" href="art1-evoloop.html" target="_blank">🔬 Living Surfaces (Evoloop) を体験</a>
+    <a class="art-link km" href="art2-komorebi.html" target="_blank">🌿 木漏れ日 Komorebi を体験</a>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-bar">
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  <span class="progress-label" id="progress-label">進捗：0 / 7</span>
+  <span class="score-display" id="score-display">スコア：0 / 0</span>
+</div>
+
+<div class="content">
+
+<!-- ===== SEC 1 ===== -->
+<div class="spacer"></div>
+<div class="section" id="sec1">
+  <div class="section-header">
+    <div class="step-badge">1</div>
+    <div>
+      <div class="section-title">2つの研究論文とインタラクティブアート</div>
+      <div class="section-subtitle">作品の出発点となった学術論文を理解しよう</div>
+    </div>
+  </div>
+  <span class="paper-tag both">両作品共通</span>
+
+  <div class="card">
+    <p><strong>インタラクティブアート</strong>とは、鑑賞者の動きや行動にリアルタイムで映像・音が反応する芸術作品です。単に「見る」だけでなく、人が参加することで作品が変化します。</p>
+    <p>今回の2作品は、大学の研究論文に書かれた技術をWebブラウザ（JavaScript）で再実装したものです。</p>
+  </div>
+
+  <div class="grid2">
+    <div class="grid-card" style="border-top:3px solid var(--ev)">
+      <h4 style="color:var(--ev)">🔬 論文①「生きている表面」</h4>
+      <p style="font-size:13px;color:var(--muted);line-height:1.7">
+        人工生命モデル<strong style="color:var(--ev)">Evoloop</strong>（セルラオートマタ）を用いてインタラクティブな動的テクスチャを生成。
+        セルが自己複製・衝突・消滅を繰り返し、生きているような映像を作り出す。
+        — 電気通信大学 児玉幸子ら
+      </p>
+    </div>
+    <div class="grid-card" style="border-top:3px solid var(--km)">
+      <h4 style="color:var(--km)">🌿 論文②「Komorebi」</h4>
+      <p style="font-size:13px;color:var(--muted);line-height:1.7">
+        <strong style="color:var(--km)">木漏れ日（komorebi）</strong>の光学特性をデジタルで再現し、
+        穏やかな通知インターフェースを実現する研究。光の硬さ（hard/soft shadow）を使い
+        <em>Calm Technology</em>（落ち着いた技術）を体現。
+        — 明星大学 平松守・天岡俊昭、SIGGRAPH Asia 2025
+      </p>
+    </div>
+  </div>
+
+  <div class="highlight">
+    <strong>共通する核心技術：</strong> どちらの作品も、Webカメラの映像から「動体」を検出し、その座標に応じて映像を生成します。この技術を <span class="kw">画像差分法（Frame Differencing）</span> と言います。
+  </div>
+
+  <div class="illust-wrap">
+    <div class="demo-title">2つの作品の関係図</div>
+    <canvas id="intro-canvas" width="600" height="130" style="max-width:100%"></canvas>
+  </div>
+
+  <!-- QUIZ 1 -->
+  <div class="quiz-wrap" id="quiz0">
+    <span class="quiz-label both">Q U I Z &nbsp; 1</span>
+    <div class="quiz-q">2つの作品に共通して使われているセンサーとなる入力デバイスは何か？</div>
+    <div class="quiz-choices" data-correct="1">
+      <button class="choice-btn"><span class="choice-mark">A</span>赤外線センサー（人感センサー）</button>
+      <button class="choice-btn"><span class="choice-mark">B</span>Webカメラ（映像をリアルタイムで取得）</button>
+      <button class="choice-btn"><span class="choice-mark">C</span>マイク（音声認識）</button>
+      <button class="choice-btn"><span class="choice-mark">D</span>タッチスクリーン</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SEC 2 ===== -->
+<div class="spacer"></div>
+<div class="section" id="sec2">
+  <div class="section-header">
+    <div class="step-badge">2</div>
+    <div>
+      <div class="section-title">共通基盤 — 画像差分法の数学</div>
+      <div class="section-subtitle">ピクセルの「引き算」で動きを検出する仕組み</div>
+    </div>
+  </div>
+  <span class="paper-tag both">両作品共通</span>
+
+  <div class="card">
+    <p>コンピュータにとって、映像は「ピクセル（画素）」の集合です。各ピクセルは <span class="kw">R（赤）・G（緑）・B（青）</span> の3つの数値（0〜255）で色を表します。</p>
+    <p>例えば「純粋な赤」は <code style="background:#111;padding:2px 6px;border-radius:4px;color:#f88">R=255, G=0, B=0</code> と表現されます。</p>
+  </div>
+
+  <div class="illust-wrap">
+    <div class="demo-title">RGB カラーモデルとフレーム差分の仕組み</div>
+    <canvas id="diff-demo" width="580" height="160" style="max-width:100%"></canvas>
+    <div class="illust-label">前フレームと現フレームの差分を計算 → 大きな差＝動体あり</div>
+  </div>
+
+  <div class="card">
+    <p><strong>画像差分法の計算式：</strong>各ピクセルで「今のフレーム」と「1フレーム前」の色の差を計算します。</p>
+  </div>
+
+  <div class="formula">差分値 = ( |R<sub>現在</sub> − R<sub>前</sub>| + |G<sub>現在</sub> − G<sub>前</sub>| + |B<sub>現在</sub> − B<sub>前</sub>| ) ÷ 3</div>
+
+  <div class="card">
+    <p>この差分値が <span class="kw">閾値（threshold）</span> を超えたピクセル座標に、Evoloop のセルや Komorebi の光パッチを生成します。</p>
+    <p>閾値を小さくすると敏感（ちょっとした動きも検出）、大きくすると鈍感（大きな動きしか検出しない）になります。</p>
+  </div>
+
+  <div class="codeblock"><span class="cm">// 画像差分法の核心コード (JavaScript)</span>
+<span class="ck">const</span> step = <span class="cn">8</span>; <span class="cm">// 8ピクセルごとにサンプリング（高速化）</span>
+<span class="ck">for</span> (<span class="ck">let</span> y = <span class="cn">0</span>; y &lt; H; y += step) {
+  <span class="ck">for</span> (<span class="ck">let</span> x = <span class="cn">0</span>; x &lt; W; x += step) {
+    <span class="ck">const</span> i = (y * W + x) * <span class="cn">4</span>; <span class="cm">// RGBA配列のインデックス</span>
+    <span class="ck">const</span> diff = (
+      Math.abs(cur[i]   - prev[i])   + <span class="cm">// R の差</span>
+      Math.abs(cur[i+<span class="cn">1</span>] - prev[i+<span class="cn">1</span>]) + <span class="cm">// G の差</span>
+      Math.abs(cur[i+<span class="cn">2</span>] - prev[i+<span class="cn">2</span>])   <span class="cm">// B の差</span>
+    ) / <span class="cn">3</span>;
+    <span class="ck">if</span> (diff &gt; threshold) {          <span class="cm">// 閾値を超えたら動体あり</span>
+      motionPoints.push({ x, y }); <span class="cm">// 座標を記録</span>
+    }
+  }
+}</div>
+
+  <!-- QUIZ 2 -->
+  <div class="quiz-wrap" id="quiz1">
+    <span class="quiz-label both">Q U I Z &nbsp; 2</span>
+    <div class="quiz-q">あるピクセルの前フレームが R=100, G=150, B=200、現在フレームが R=130, G=160, B=190 のとき、差分値はいくつか（小数第1位まで）？</div>
+    <div class="quiz-choices" data-correct="2">
+      <button class="choice-btn"><span class="choice-mark">A</span>差分値 = 50.0</button>
+      <button class="choice-btn"><span class="choice-mark">B</span>差分値 = 10.0</button>
+      <button class="choice-btn"><span class="choice-mark">C</span>差分値 = 16.7　（計算式：(30+10+10)÷3 ≈ 16.7）</button>
+      <button class="choice-btn"><span class="choice-mark">D</span>差分値 = 0（変化なし）</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SEC 3 ===== -->
+<div class="spacer"></div>
+<div class="section" id="sec3">
+  <div class="section-header">
+    <div class="step-badge ev">3</div>
+    <div>
+      <div class="section-title">人工生命 Evoloop — セルラオートマタとは</div>
+      <div class="section-subtitle">「生きている表面」論文のコアとなる人工生命モデル</div>
+    </div>
+  </div>
+  <span class="paper-tag ev">論文①「生きている表面」</span>
+
+  <div class="card">
+    <p><span class="kw-ev">セルラオートマタ（Cellular Automata）</span>とは、格子状のセル（細胞）が単純なルールで状態を変化させ、複雑なパターンを生み出すモデルです。有名な例に「ライフゲーム（Game of Life）」があります。</p>
+    <p>論文で使われた <span class="kw-ev">Evoloop</span> は、電気通信大学の佐山弘樹氏が開発した9状態・5近傍のセルラオートマタです。<strong>自己複製・衝突による消滅・進化</strong>という性質を持ちます。</p>
+  </div>
+
+  <div class="grid2">
+    <div class="grid-card">
+      <h4 style="color:var(--ev)">自己複製（Self-Replication）</h4>
+      <p style="font-size:13px;color:var(--muted)">個体が周囲の空きスペースに自分のコピーを作る。空間が十分にあれば増殖し続ける。</p>
+    </div>
+    <div class="grid-card">
+      <h4 style="color:var(--red)">衝突→消滅（Collision）</h4>
+      <p style="font-size:13px;color:var(--muted)">2つの個体が同じ場所に増殖しようとすると衝突が起き、一方または両方が消滅する。</p>
+    </div>
+    <div class="grid-card">
+      <h4 style="color:var(--km)">進化（Evolution）</h4>
+      <p style="font-size:13px;color:var(--muted)">厳しい環境（スペース不足）でも生き残れるよう、個体が少しずつ小さく・強くなっていく。</p>
+    </div>
+    <div class="grid-card">
+      <h4 style="color:var(--blue)">空間の種類</h4>
+      <p style="font-size:13px;color:var(--muted)">
+        <strong>空間A（動体エリア）</strong>：密集 → 高頻度衝突 → 激しい明滅<br>
+        <strong>空間B（静止エリア）</strong>：まばら → ゆっくり進化
+      </p>
+    </div>
+  </div>
+
+  <div class="illust-wrap">
+    <div class="demo-title">簡易セルラオートマタ — セルの誕生・複製・衝突・消滅</div>
+    <canvas id="ca-demo" width="380" height="200" style="max-width:100%"></canvas>
+    <div class="illust-label">クリックでセルを追加できます</div>
+  </div>
+
+  <div class="highlight ev">
+    <strong>インタラクションの仕組み：</strong>
+    カメラ前で人が動く → 動体検出エリア（空間A）に多数のセルが播種 → 密集 → 高頻度衝突 → 激しい明滅パターン。
+    動きを止めると → セルの密度が下がり → ゆっくりと進化（空間B）。
+  </div>
+
+  <!-- QUIZ 3 -->
+  <div class="quiz-wrap" id="quiz2">
+    <span class="quiz-label ev">Q U I Z &nbsp; 3</span>
+    <div class="quiz-q">Evoloop の「動体検出エリア（空間A）」でセルが激しく明滅する理由として最も適切なものはどれか？</div>
+    <div class="quiz-choices" data-correct="3">
+      <button class="choice-btn"><span class="choice-mark">A</span>プログラムがランダムにセルを点滅させているから</button>
+      <button class="choice-btn"><span class="choice-mark">B</span>セルの色がフレームごとにランダムに変わるから</button>
+      <button class="choice-btn"><span class="choice-mark">C</span>カメラの解像度が低くてノイズが多いから</button>
+      <button class="choice-btn"><span class="choice-mark">D</span>密集して播種されたセル同士が高頻度で衝突し、消滅と生成を繰り返すから</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SEC 4 ===== -->
+<div class="spacer"></div>
+<div class="section" id="sec4">
+  <div class="section-header">
+    <div class="step-badge ev">4</div>
+    <div>
+      <div class="section-title">Evoloop の実装詳細</div>
+      <div class="section-subtitle">セルの振動・消滅跡・フォグ効果をコードで実現する方法</div>
+    </div>
+  </div>
+  <span class="paper-tag ev">論文①「生きている表面」</span>
+
+  <div class="card">
+    <p>論文で特に重要な3つの視覚表現を JavaScript で実装しました。</p>
+  </div>
+
+  <!-- State machine -->
+  <div class="card" style="padding:18px 20px">
+    <p style="margin-bottom:12px"><strong>① セルの状態遷移（State Machine）</strong></p>
+    <div class="states">
+      <div class="state-box empty">
+        <div class="s-name">EMPTY</div>
+        <div style="font-size:11px;color:var(--muted)">空</div>
+      </div>
+      <div class="state-arrow">→</div>
+      <div class="state-box alive">
+        <div class="s-name">ALIVE</div>
+        <div style="font-size:11px;color:var(--muted)">生存・複製</div>
+      </div>
+      <div class="state-arrow">→</div>
+      <div class="state-box dying">
+        <div class="s-name">DYING</div>
+        <div style="font-size:11px;color:var(--muted)">死滅中</div>
+      </div>
+      <div class="state-arrow">→</div>
+      <div class="state-box empty">
+        <div class="s-name">EMPTY</div>
+        <div style="font-size:11px;color:var(--muted)">消滅</div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-top:10px">動体検出 → EMPTY → ALIVE（播種）。衝突または老化 → DYING（フェードアウト）→ EMPTY</p>
+  </div>
+
+  <!-- Vibration -->
+  <div class="card" style="padding:18px 20px">
+    <p style="margin-bottom:10px"><strong>② 振動効果（Vibration）</strong>— 論文：「セルを表面に対し垂直方向に振動させ、ざわめくように見せる」</p>
+    <div class="codeblock"><span class="cm">// 各セルがsinカーブで位置をずらし、揺れて見せる</span>
+<span class="ck">const</span> vx = Math.sin(cell.vib) * cell.vibAmp; <span class="cm">// 横方向の振動</span>
+<span class="ck">const</span> vy = Math.cos(cell.vib * <span class="cn">0.7</span>) * cell.vibAmp; <span class="cm">// 縦方向の振動</span>
+cell.vib += <span class="cn">0.25</span>; <span class="cm">// フレームごとに位相を進める</span>
+
+<span class="cm">// 死亡中は振動を減衰させる（paper：個体が死ぬときには減衰させ）</span>
+<span class="ck">if</span> (cell.state === DYING) {
+  cell.vibAmp = Math.max(<span class="cn">0</span>, cell.vibAmp - <span class="cn">0.1</span>); <span class="cm">// 振幅を小さくする</span>
+}</div>
+    <div class="illust-wrap" style="margin-top:10px">
+      <div class="demo-title">振動デモ — sinカーブによる位置オフセット</div>
+      <canvas id="vib-demo" width="380" height="130" style="max-width:100%"></canvas>
+    </div>
+  </div>
+
+  <!-- Fog + trace -->
+  <div class="card" style="padding:18px 20px">
+    <p style="margin-bottom:10px"><strong>③ 消滅跡の残留 + フォグ効果</strong>— 論文：「消滅した跡をバックグラウンドカラーとして残す」「フォグ効果でぼやけた風合い」</p>
+    <div class="codeblock"><span class="cm">// 毎フレーム、非常に薄い黒を重ねる → 古い描画が徐々に消える</span>
+ctx.fillStyle = <span class="cs">'rgba(0, 5, 2, 0.04)'</span>; <span class="cm">// 0.04 = ゆっくり消える</span>
+ctx.fillRect(<span class="cn">0</span>, <span class="cn">0</span>, W, H);
+
+<span class="cm">// フォグ効果: ぼかしたキャンバスを薄く重ねる</span>
+blurCtx.filter = <span class="cs">'blur(1.2px)'</span>;
+blurCtx.drawImage(canvas, <span class="cn">0</span>, <span class="cn">0</span>); <span class="cm">// メインCanvasをぼかしてコピー</span>
+ctx.globalAlpha = <span class="cn">0.18</span>;
+ctx.drawImage(blurCanvas, <span class="cn">0</span>, <span class="cn">0</span>); <span class="cm">// ぼかし画像を薄く重ねる</span></div>
+  </div>
+
+  <!-- QUIZ 4 -->
+  <div class="quiz-wrap" id="quiz3">
+    <span class="quiz-label ev">Q U I Z &nbsp; 4</span>
+    <div class="quiz-q">Evoloop のセル振動を実装するためにメインで使われている数学関数はどれか？</div>
+    <div class="quiz-choices" data-correct="0">
+      <button class="choice-btn"><span class="choice-mark">A</span>sin（サイン）と cos（コサイン） — 周期的に±値を繰り返す</button>
+      <button class="choice-btn"><span class="choice-mark">B</span>log（対数関数） — 値の増加を滑らかにする</button>
+      <button class="choice-btn"><span class="choice-mark">C</span>sqrt（平方根） — 距離を計算する</button>
+      <button class="choice-btn"><span class="choice-mark">D</span>abs（絶対値） — マイナスをプラスに変換する</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SEC 5 ===== -->
+<div class="spacer"></div>
+<div class="section" id="sec5">
+  <div class="section-header">
+    <div class="step-badge km">5</div>
+    <div>
+      <div class="section-title">木漏れ日と光の物理 — Calm Technology</div>
+      <div class="section-subtitle">Komorebi 論文が着目した自然現象の科学</div>
+    </div>
+  </div>
+  <span class="paper-tag km">論文②「Komorebi」</span>
+
+  <div class="card">
+    <p><span class="kw-km">木漏れ日（Komorebi）</span>とは、木の葉の間から差し込む太陽の光のことです。日本語特有の言葉で、英語には対応する単語がありません。</p>
+    <p>論文はこの木漏れ日を <span class="kw-km">Calm Technology（穏やかな技術）</span> の表現媒体として使います。Calm Technology とは、人の注意を強制的に奪わず、周辺視野でそっと情報を伝えるデザイン思想です。</p>
+  </div>
+
+  <div class="grid2">
+    <div class="grid-card" style="border-top:3px solid #aaa">
+      <h4>Calm Technology の原則</h4>
+      <ul style="font-size:13px;color:var(--muted);line-height:2;padding-left:16px">
+        <li>注意を強制しない</li>
+        <li>周辺視野に溶け込む</li>
+        <li>静けさと時間の流れを感じさせる</li>
+        <li>「余白（yohaku）」を持つ</li>
+      </ul>
+    </div>
+    <div class="grid-card" style="border-top:3px solid var(--km)">
+      <h4 style="color:var(--km)">木漏れ日がなぜ適しているか</h4>
+      <ul style="font-size:13px;color:var(--muted);line-height:2;padding-left:16px">
+        <li>光のパターンが自然に変化</li>
+        <li>周辺視野で認識できる</li>
+        <li>穏やかさ・自然との一体感</li>
+        <li>強く注意を引かない</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="padding:18px 20px">
+    <p style="margin-bottom:12px"><strong>光の物理：Hard Shadow vs Soft Shadow</strong></p>
+    <p>論文では光源の種類によって影の硬さが変わることを活用しています。</p>
+    <div class="grid2" style="margin-top:12px">
+      <div style="text-align:center">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">点光源（Hard Shadow）</div>
+        <canvas id="hard-shadow" width="160" height="120" style="max-width:100%;background:#000;border-radius:6px"></canvas>
+        <p style="font-size:11px;color:var(--muted);margin-top:4px">輪郭くっきり・本影(umbra)のみ</p>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">面光源（Soft Shadow）</div>
+        <canvas id="soft-shadow" width="160" height="120" style="max-width:100%;background:#000;border-radius:6px"></canvas>
+        <p style="font-size:11px;color:var(--muted);margin-top:4px">縁がぼやける・半影(penumbra)あり</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUIZ 5 -->
+  <div class="quiz-wrap" id="quiz4">
+    <span class="quiz-label km">Q U I Z &nbsp; 5</span>
+    <div class="quiz-q">木漏れ日の「やわらかい光（soft shadow）」が生まれる物理的な理由として正しいものはどれか？</div>
+    <div class="quiz-choices" data-correct="1">
+      <button class="choice-btn"><span class="choice-mark">A</span>光が水蒸気で屈折するから</button>
+      <button class="choice-btn"><span class="choice-mark">B</span>太陽は点ではなく面積を持つ光源なので、葉の影の縁に半影（penumbra）ができるから</button>
+      <button class="choice-btn"><span class="choice-mark">C</span>葉が透明で光を通すから</button>
+      <button class="choice-btn"><span class="choice-mark">D</span>地面が光を反射するから</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SEC 6 ===== -->
+<div class="spacer"></div>
+<div class="section" id="sec6">
+  <div class="section-header">
+    <div class="step-badge km">6</div>
+    <div>
+      <div class="section-title">Komorebi の実装詳細</div>
+      <div class="section-subtitle">光のパッチ・加算合成・ベルの音をコードで実現する</div>
+    </div>
+  </div>
+  <span class="paper-tag km">論文②「Komorebi」</span>
+
+  <!-- Radial gradient -->
+  <div class="card" style="padding:18px 20px">
+    <p style="margin-bottom:10px"><strong>① 放射状グラデーション（Radial Gradient）</strong> — 木漏れ日パッチの描画</p>
+    <div class="grid2">
+      <div>
+        <div class="codeblock"><span class="cm">// hard patch: 小さく輪郭くっきり（点光源）</span>
+<span class="ck">const</span> grad = ctx.createRadialGradient(
+  <span class="cn">0</span>, <span class="cn">0</span>, <span class="cn">0</span>,  <span class="cm">// 内側円（中心）</span>
+  <span class="cn">0</span>, <span class="cn">0</span>, r   <span class="cm">// 外側円（半径r）</span>
+);
+grad.addColorStop(<span class="cn">0</span>,    <span class="cs">`hsla(65,100%,80%,${a})`</span>);
+grad.addColorStop(<span class="cn">0.65</span>, <span class="cs">`hsla(65,100%,70%,${a*0.5})`</span>);
+grad.addColorStop(<span class="cn">1</span>,    <span class="cs">`hsla(65,100%,80%,0)`</span>);
+
+<span class="cm">// soft patch: 広くぼんやり（面光源）</span>
+grad.addColorStop(<span class="cn">0</span>,    <span class="cs">`hsla(65,90%,80%,${a})`</span>);
+grad.addColorStop(<span class="cn">0.35</span>, <span class="cs">`hsla(65,90%,75%,${a*0.6})`</span>);
+grad.addColorStop(<span class="cn">0.7</span>,  <span class="cs">`hsla(65,90%,65%,${a*0.2})`</span>);
+grad.addColorStop(<span class="cn">1</span>,    <span class="cs">`hsla(65,90%,80%,0)`</span>);</div>
+      </div>
+      <div>
+        <div class="illust-wrap" style="height:100%;justify-content:center">
+          <div class="demo-title">クリックで光パッチを追加</div>
+          <canvas id="patch-demo" width="200" height="160" style="background:#010601;border-radius:8px;cursor:pointer"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Additive blending -->
+  <div class="card" style="padding:18px 20px">
+    <p style="margin-bottom:10px"><strong>② 加算合成（Additive Blending）</strong> — 光が重なって明るくなる</p>
+    <div class="codeblock"><span class="cm">// 通常合成: 後から描いた色が上書き（重なっても明るくならない）</span>
+ctx.globalCompositeOperation = <span class="cs">'source-over'</span>;
+
+<span class="cm">// 加算合成: RGBの値を加算 → 重なるほど明るくなる（現実の光と同じ）</span>
+ctx.globalCompositeOperation = <span class="cs">'lighter'</span>;
+<span class="cm">// 例: RGB(100,50,0) + RGB(50,100,0) = RGB(150,150,0) → 黄色に！</span></div>
+    <div class="illust-wrap" style="margin-top:10px">
+      <div class="demo-title">通常合成 vs 加算合成（lighter）の違い</div>
+      <canvas id="blend-demo" width="380" height="120" style="max-width:100%"></canvas>
+    </div>
+  </div>
+
+  <!-- Bell sound -->
+  <div class="card" style="padding:18px 20px">
+    <p style="margin-bottom:10px"><strong>③ ベルの音（Web Audio API）</strong> — Calm Technology の音響</p>
+    <div class="codeblock"><span class="cm">// 穏やかなベル音: ゆっくり立ち上がり、長く残響する</span>
+<span class="ck">const</span> osc = audioCtx.createOscillator();
+osc.type = <span class="cs">'sine'</span>;
+osc.frequency.value = <span class="cf">700</span> - (y / H) * <span class="cf">350</span>; <span class="cm">// 上部=高音</span>
+
+<span class="ck">const</span> gain = audioCtx.createGain();
+gain.gain.setValueAtTime(<span class="cn">0</span>, now);
+gain.gain.linearRampToValueAtTime(<span class="cn">0.035</span>, now + <span class="cn">0.03</span>);  <span class="cm">// 遅いアタック</span>
+gain.gain.exponentialRampToValueAtTime(<span class="cn">0.001</span>, now + <span class="cn">1.6</span>); <span class="cm">// 長い余韻</span>
+
+<span class="cm">// 倍音を加えてベルらしくする</span>
+<span class="ck">const</span> osc2 = audioCtx.createOscillator();
+osc2.frequency.value = freq * <span class="cn">2.76</span>; <span class="cm">// 2.76倍音（鐘の特徴的な倍音比）</span></div>
+    <div class="highlight km">
+      <strong>ポイント：</strong>Calm Technology の音は「気づかせるが邪魔しない」ことが重要。ゆっくりアタック・長い余韻で自然に溶け込む音を設計しています。500ms以上の間隔を設けて頻繁に鳴らさないことも大切。
+    </div>
+  </div>
+
+  <!-- QUIZ 6 -->
+  <div class="quiz-wrap" id="quiz5">
+    <span class="quiz-label km">Q U I Z &nbsp; 6</span>
+    <div class="quiz-q">複数の木漏れ日パッチが重なったとき、重なった部分が自然に明るくなる。これはどのブレンドモードで実現しているか？</div>
+    <div class="quiz-choices" data-correct="2">
+      <button class="choice-btn"><span class="choice-mark">A</span><code>source-over</code>（通常合成 — 上の色が下を覆う）</button>
+      <button class="choice-btn"><span class="choice-mark">B</span><code>multiply</code>（乗算 — 重なると暗くなる）</button>
+      <button class="choice-btn"><span class="choice-mark">C</span><code>lighter</code>（加算合成 — RGBの値を足すので重なると明るくなる）</button>
+      <button class="choice-btn"><span class="choice-mark">D</span><code>difference</code>（差分 — 色の差を表示する）</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+</div>
+
+<!-- ===== SEC 7 ===== -->
+<div class="spacer"></div>
+<div class="section" id="sec7">
+  <div class="section-header">
+    <div class="step-badge" style="background:linear-gradient(135deg,var(--ev),var(--km));color:#0a0800">7</div>
+    <div>
+      <div class="section-title">まとめ — 2作品を技術で比較する</div>
+      <div class="section-subtitle">Web技術でここまで表現できる</div>
+    </div>
+  </div>
+  <span class="paper-tag both">両作品比較</span>
+
+  <div class="card">
+    <p>どちらの作品も <strong>純粋なWebブラウザ技術（HTML/CSS/JavaScript）</strong> だけで動作します。専用ハードウェアは一切不要です。</p>
+  </div>
+
+  <table class="cmp-table">
+    <tr>
+      <th>技術要素</th>
+      <th class="ev-cell">🔬 Evoloop（生きている表面）</th>
+      <th class="km-cell">🌿 Komorebi（木漏れ日）</th>
+    </tr>
+    <tr><td>入力</td><td class="ev-cell">Webカメラ画像差分</td><td class="km-cell">Webカメラ画像差分</td></tr>
+    <tr><td>映像生成の仕組み</td><td class="ev-cell">セルラオートマタ格子</td><td class="km-cell">パーティクルシステム</td></tr>
+    <tr><td>主要な数学</td><td class="ev-cell">sin/cos振動、格子インデックス</td><td class="km-cell">放射状グラデーション、楕円変換</td></tr>
+    <tr><td>ブレンドモード</td><td class="ev-cell">通常（source-over）</td><td class="km-cell">加算（lighter）</td></tr>
+    <tr><td>音</td><td class="ev-cell">FM変調サイン波（有機的）</td><td class="km-cell">倍音付きサイン波（ベル）</td></tr>
+    <tr><td>背景のフェード速度</td><td class="ev-cell">0.04（跡が残る）</td><td class="km-cell">0.03（非常にゆっくり）</td></tr>
+    <tr><td>Webカメラ API</td><td class="ev-cell" colspan="2" style="text-align:center">getUserMedia() — 両作品共通</td></tr>
+    <tr><td>描画 API</td><td class="ev-cell" colspan="2" style="text-align:center">Canvas 2D API — 両作品共通</td></tr>
+    <tr><td>音声 API</td><td class="ev-cell" colspan="2" style="text-align:center">Web Audio API — 両作品共通</td></tr>
+  </table>
+
+  <div class="card">
+    <p><strong>今後の可能性：</strong> 論文では、センサーとして Webカメラの他に <strong>iPhone・Android・Kinect（骨格認識）</strong> なども組み合わせ可能と述べています。機械学習（MediaPipe）で手や体を精密に認識すれば、さらに豊かなインタラクションが実現できます。</p>
+  </div>
+
+  <div class="highlight" style="border-color:var(--purple)">
+    <strong>高校生へのメッセージ：</strong>
+    今回の実装で使ったのは、数学（sin/cos・絶対値）、物理（光のumbra/penumbra）、生物学（自己複製・進化）、コンピュータサイエンス（セルラオートマタ）を横断した知識です。
+    インタラクティブアートは、多くの分野の「好き」を一つに繋げられる表現形式です。
+  </div>
+
+  <!-- QUIZ 7 -->
+  <div class="quiz-wrap" id="quiz6">
+    <span class="quiz-label both">Q U I Z &nbsp; 7</span>
+    <div class="quiz-q">今回の2作品をブラウザだけで動かせる主な理由として最も正確なものはどれか？</div>
+    <div class="quiz-choices" data-correct="3">
+      <button class="choice-btn"><span class="choice-mark">A</span>JavaScriptは計算が速いので、どんな処理でもリアルタイムに行えるから</button>
+      <button class="choice-btn"><span class="choice-mark">B</span>Webサーバーがリアルタイムで映像処理を行っているから</button>
+      <button class="choice-btn"><span class="choice-mark">C</span>最新のCPUがあればブラウザ不要で実行できるから</button>
+      <button class="choice-btn"><span class="choice-mark">D</span>ブラウザ標準の getUserMedia（カメラ）・Canvas API（描画）・Web Audio API（音）が揃っているから</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+</div>
+
+<!-- FINAL -->
+<div class="spacer"></div>
+<div id="final-result">
+  <div style="font-size:48px;margin-bottom:8px">🎉</div>
+  <h2 style="font-size:22px;margin-bottom:4px">全問チャレンジ完了！</h2>
+  <div id="final-score-big"></div>
+  <div id="final-comment"></div>
+  <div id="final-detail"></div>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a class="btn-restart" href="art1-evoloop.html" target="_blank">🔬 Evoloop を体験する</a>
+    <a class="btn-restart" href="art2-komorebi.html" target="_blank">🌿 Komorebi を体験する</a>
+    <a class="btn-restart" href="learn.html" target="_blank">📘 基礎編を読む</a>
+  </div>
+</div>
+<div class="spacer"></div>
+</div><!-- /content -->
+
+<script>
+// =====================================================================
+//  Quiz System
+// =====================================================================
+const EXPLANATIONS = [
+  { correct:'Webカメラの映像を取得し、フレームごとに差分を計算します。iPhoneをCamo Studioで仮想Webカメラ化することで、高品質な映像が得られます。',
+    wrong:'専用センサーや音声ではなく、Webカメラの「前後フレームの差分」で動体を検出しています。' },
+  { correct:'|R差| = |130-100| = 30、|G差| = |160-150| = 10、|B差| = |190-200| = 10。平均 = (30+10+10)÷3 = 50÷3 ≈ 16.7 です。絶対値に注意！',
+    wrong:'差分値は各チャンネルの絶対差の平均です。(|30|+|10|+|10|)÷3 = 16.7 となります。' },
+  { correct:'動体エリアに多数のセルが密集して播種されるため、隣接するセル同士が高頻度で衝突し、消滅と生成が激しく繰り返されます。これが「明滅」の正体です。',
+    wrong:'明滅はランダムな点滅でも色の変化でもなく、「密集したセルの衝突による消滅と再播種の繰り返し」によって生まれます。' },
+  { correct:'sin は周期的に -1 〜 +1 の値を繰り返します。これをピクセルオフセットとして使うと、セルが左右・上下に振動しているように見えます。cos も同じ性質を持ちます。',
+    wrong:'振動は sin/cos 関数の周期的な性質を使います。毎フレームで位相（vib）を少し進めると、オフセット値が振動するように変化します。' },
+  { correct:'太陽は点ではなく約140万kmの直径を持つ面光源です。葉の縁の影は、太陽のある角度から見ると一部の光が届く「半影（penumbra）」となり、やわらかくぼやけます。',
+    wrong:'soft shadow は水蒸気でも透過でも反射でもなく、「光源が面積を持つ」ことによる半影（penumbra）が原因です。' },
+  { correct:'lighter（加算合成）では Canvas が RGBの数値を足し合わせます。現実の光も重なると明るくなります。この一致が「本物らしい木漏れ日」を生む秘密です。',
+    wrong:'source-over は上書き、multiply は暗くなります。光が重なって明るくなるのは lighter（加算合成）です。' },
+  { correct:'getUserMedia でカメラ映像を取得し、Canvas API でピクセル操作と描画を行い、Web Audio API で音を生成します。この3つがブラウザ標準で使えることが鍵です。',
+    wrong:'処理はすべてブラウザ内（クライアント）で完結します。サーバーは不要です。必要なのはブラウザ標準API（getUserMedia・Canvas・Web Audio）です。' },
+];
+
+let totalQ = 7, answered = 0, correct = 0;
+const answeredSet = new Set();
+
+function updateProgress() {
+  document.getElementById('progress-fill').style.width = (answered / totalQ * 100) + '%';
+  document.getElementById('progress-label').textContent = `進捗：${answered} / ${totalQ}`;
+  document.getElementById('score-display').textContent  = `スコア：${correct} / ${answered}`;
+  if (answered === totalQ) setTimeout(showFinal, 800);
+}
+
+function showFinal() {
+  const el = document.getElementById('final-result');
+  el.style.display = 'block';
+  const pct = Math.round(correct / totalQ * 100);
+  document.getElementById('final-score-big').textContent = `${correct} / ${totalQ}`;
+  const comments = [
+    [100,'🏆 完璧！2つの論文の技術を完全に理解しています！'],
+    [70, '🎉 よくできました！あと少しで完璧です。'],
+    [40, '📖 もう一度、各セクションを読み直してみましょう。'],
+    [0,  '🌱 難しかった部分を読み返すと理解が深まります！'],
+  ];
+  const [, msg] = comments.find(([t]) => pct >= t);
+  document.getElementById('final-comment').textContent = msg;
+  document.getElementById('final-detail').textContent  = `正解率 ${pct}%`;
+  el.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+document.querySelectorAll('.quiz-wrap').forEach((quiz, qIdx) => {
+  const choices = quiz.querySelectorAll('.choice-btn');
+  const correct_idx = parseInt(quiz.querySelector('.quiz-choices').dataset.correct);
+  const feedback = quiz.querySelector('.quiz-feedback');
+
+  choices.forEach((btn, bIdx) => {
+    btn.addEventListener('click', () => {
+      if (answeredSet.has(qIdx)) return;
+      answeredSet.add(qIdx);
+      const isCorrect = bIdx === correct_idx;
+      if (isCorrect) correct++;
+      answered++;
+
+      choices.forEach((b, i) => {
+        b.disabled = true;
+        if (i === correct_idx) b.classList.add('correct');
+        else if (i === bIdx && !isCorrect) b.classList.add('wrong');
+      });
+
+      const exp = EXPLANATIONS[qIdx];
+      feedback.style.display = 'block';
+      feedback.className = 'quiz-feedback ' + (isCorrect ? 'correct-fb' : 'wrong-fb');
+      feedback.innerHTML = isCorrect
+        ? `<strong>✅ 正解！</strong> ${exp.correct}`
+        : `<strong>❌ 不正解。</strong> ${exp.wrong}`;
+      updateProgress();
+    });
+  });
+});
+
+// Intersection Observer
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.08 });
+document.querySelectorAll('.section').forEach(s => io.observe(s));
+
+// =====================================================================
+//  Canvas Demonstrations
+// =====================================================================
+
+// --- 1. Intro canvas: flow diagram ---
+(function() {
+  const c = document.getElementById('intro-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.fillStyle = '#0a0a18'; ctx.fillRect(0,0,W,H);
+
+  const boxes = [
+    { x:20,  label:'Webカメラ', color:'#6aafff' },
+    { x:145, label:'画像差分法', color:'#a88fff' },
+    { x:310, label:'Evoloop\nセルラオートマタ', color:'#44ee66' },
+    { x:480, label:'木漏れ日\nKomorebi', color:'#f0c040' },
+  ];
+  const bW=100, bH=52, y0=H/2-bH/2;
+
+  boxes.forEach((b, i) => {
+    // arrow
+    if (i>0) {
+      ctx.strokeStyle='#3a3a5a'; ctx.lineWidth=2;
+      ctx.beginPath();
+      ctx.moveTo(b.x-18, H/2); ctx.lineTo(b.x+1, H/2);
+      ctx.stroke();
+      ctx.fillStyle='#3a3a5a';
+      ctx.beginPath();
+      ctx.moveTo(b.x+1,H/2-5); ctx.lineTo(b.x+12,H/2); ctx.lineTo(b.x+1,H/2+5);
+      ctx.fill();
+    }
+    // box
+    ctx.fillStyle=b.color+'22';
+    ctx.strokeStyle=b.color;
+    ctx.lineWidth=1.5;
+    const rx=b.x, ry=y0;
+    ctx.beginPath();
+    ctx.roundRect(rx,ry,bW,bH,6);
+    ctx.fill(); ctx.stroke();
+    // label
+    ctx.fillStyle=b.color;
+    ctx.font='bold 11px sans-serif';
+    ctx.textAlign='center';
+    const lines=b.label.split('\n');
+    lines.forEach((l,li)=>ctx.fillText(l,rx+bW/2,ry+bH/2+(li-(lines.length-1)/2)*15+1));
+  });
+  // split arrow
+  ctx.strokeStyle='#a88fff'; ctx.lineWidth=1.5;
+  ctx.setLineDash([4,3]);
+  ctx.beginPath();
+  ctx.moveTo(232,H/2); ctx.lineTo(232,H/2-22); ctx.lineTo(310,H/2-22);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(232,H/2); ctx.lineTo(232,H/2+22); ctx.lineTo(480,H/2+22); ctx.lineTo(480,H/2+bH/2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+})();
+
+// --- 2. Frame diff demo ---
+(function(){
+  const c=document.getElementById('diff-demo');
+  if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  let t=0;
+
+  function draw(){
+    ctx.fillStyle='#07070f'; ctx.fillRect(0,0,W,H);
+    const pw=160,ph=120,gap=20;
+    const x1=gap, x2=x1+pw+gap, x3=x2+pw+gap;
+    const y0=(H-ph)/2;
+
+    // Labels
+    ctx.font='11px monospace'; ctx.fillStyle='#5a5a8a'; ctx.textAlign='center';
+    ctx.fillText('前フレーム', x1+pw/2, y0-6);
+    ctx.fillText('現フレーム', x2+pw/2, y0-6);
+    ctx.fillText('差分', x3+pw/2, y0-6);
+
+    // Frame 1 (previous)
+    ctx.fillStyle='#111'; ctx.fillRect(x1,y0,pw,ph);
+    ctx.fillStyle='rgba(100,150,255,0.7)';
+    ctx.beginPath(); ctx.arc(x1+60,y0+60,24,0,Math.PI*2); ctx.fill();
+
+    // Frame 2 (current — shifted)
+    const shift=Math.sin(t)*15;
+    ctx.fillStyle='#111'; ctx.fillRect(x2,y0,pw,ph);
+    ctx.fillStyle='rgba(100,150,255,0.7)';
+    ctx.beginPath(); ctx.arc(x2+60+shift,y0+60,24,0,Math.PI*2); ctx.fill();
+
+    // Diff
+    ctx.fillStyle='#111'; ctx.fillRect(x3,y0,pw,ph);
+    if(Math.abs(shift)>2){
+      ctx.fillStyle='rgba(255,80,120,0.8)';
+      const dx=shift>0?shift:0, sx=shift<0?-shift:0;
+      ctx.fillRect(x3+60-24+sx, y0+60-24, Math.abs(shift)+4, 48);
+    }
+
+    // Operators
+    ctx.font='bold 22px sans-serif'; ctx.fillStyle='#a88fff';
+    ctx.fillText('−', x2-16, y0+ph/2+8);
+    ctx.fillText('=', x3-16, y0+ph/2+8);
+
+    // Border
+    ['#2a2a5a','#2a2a5a','rgba(255,80,120,.4)'].forEach((col,i)=>{
+      ctx.strokeStyle=col; ctx.lineWidth=1;
+      const xx=[x1,x2,x3][i];
+      ctx.strokeRect(xx,y0,pw,ph);
+    });
+
+    t+=0.03;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// --- 3. Cellular automata demo ---
+(function(){
+  const c=document.getElementById('ca-demo');
+  if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  const COLS=38,ROWS=20;
+  const cw=W/COLS,ch=H/ROWS;
+  let grid=Array.from({length:COLS*ROWS},()=>({s:0,age:0,h:120+Math.random()*80}));
+  let baseHue=120;
+
+  function idx(x,y){return y*COLS+x}
+  function seed(cx,cy){
+    if(cx<0||cx>=COLS||cy<0||cy>=ROWS)return;
+    const g=grid[idx(cx,cy)];
+    if(g.s===0){g.s=1;g.age=0;g.h=baseHue+(Math.random()-.5)*40;}
+  }
+
+  // Random seeds
+  for(let i=0;i<8;i++)seed(Math.floor(Math.random()*COLS),Math.floor(Math.random()*ROWS));
+
+  c.addEventListener('click',e=>{
+    const r=c.getBoundingClientRect();
+    const cx=Math.floor((e.clientX-r.left)*(COLS/r.width));
+    const cy=Math.floor((e.clientY-r.top)*(ROWS/r.height));
+    for(let di=-1;di<=1;di++)for(let dj=-1;dj<=1;dj++)seed(cx+di,cy+dj);
+  });
+
+  let tick=0;
+  function update(){
+    baseHue+=0.15;
+    const rep=[];
+    for(let y=0;y<ROWS;y++){
+      for(let x=0;x<COLS;x++){
+        const g=grid[idx(x,y)];
+        if(g.s===0)continue;
+        g.age++;
+        if(g.s===1){
+          if(g.age%4===0&&Math.random()<0.5){
+            const dirs=[[-1,0],[1,0],[0,-1],[0,1]];
+            const[dx,dy]=dirs[Math.floor(Math.random()*4)];
+            const nx=x+dx,ny=y+dy;
+            if(nx>=0&&nx<COLS&&ny>=0&&ny<ROWS){
+              const nb=grid[idx(nx,ny)];
+              if(nb.s===0) rep.push({nx,ny,h:g.h+(Math.random()-.5)*20});
+              else if(nb.s===1&&Math.random()<0.5){g.s=2;g.age=0;}
+            }
+          }
+          if(g.age>50){g.s=2;g.age=0;}
+        } else if(g.s===2){
+          if(g.age>12){g.s=0;}
+        }
+      }
+    }
+    rep.forEach(r=>{
+      const g=grid[idx(r.nx,r.ny)];
+      if(g.s===0){g.s=1;g.age=0;g.h=r.h;}
+    });
+  }
+
+  function render(){
+    ctx.fillStyle='rgba(7,7,15,0.15)'; ctx.fillRect(0,0,W,H);
+    for(let y=0;y<ROWS;y++){
+      for(let x=0;x<COLS;x++){
+        const g=grid[idx(x,y)];
+        if(g.s===0)continue;
+        const alpha=g.s===2?Math.max(0,1-g.age/12)*0.85:0.9;
+        ctx.fillStyle=`hsla(${g.h|0},100%,60%,${alpha})`;
+        ctx.fillRect(x*cw+0.5,y*ch+0.5,cw-1,ch-1);
+      }
+    }
+  }
+
+  function loop(){
+    tick++;
+    if(tick%2===0)update();
+    render();
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+// --- 4. Vibration demo ---
+(function(){
+  const c=document.getElementById('vib-demo');
+  if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  const COLS=16,ROWS=5;
+  const cw=W/COLS,ch=H/ROWS;
+  let vibs=Array.from({length:COLS*ROWS},(_,i)=>({
+    vib:i*0.4,amp:2+Math.random()*2,h:100+i*8
+  }));
+
+  function loop(){
+    ctx.fillStyle='rgba(7,7,15,0.18)'; ctx.fillRect(0,0,W,H);
+    vibs.forEach((v,i)=>{
+      const x=(i%COLS)*cw, y=Math.floor(i/COLS)*ch;
+      v.vib+=0.12;
+      const ox=Math.sin(v.vib)*v.amp;
+      const oy=Math.cos(v.vib*0.7)*v.amp;
+      ctx.fillStyle=`hsla(${v.h|0},100%,62%,0.85)`;
+      ctx.fillRect(x+ox+1,y+oy+1,cw-2,ch-2);
+    });
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+// --- 5. Hard/Soft shadow demos ---
+(function(){
+  function drawShadow(id, hard){
+    const c=document.getElementById(id);
+    if(!c)return;
+    const ctx=c.getContext('2d');
+    const W=c.width,H=c.height;
+    ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+
+    // Light source indicator
+    ctx.fillStyle=hard?'#fff8d0':'rgba(255,240,180,0.6)';
+    if(hard){
+      // Point light
+      ctx.beginPath(); ctx.arc(80,20,6,0,Math.PI*2); ctx.fill();
+    } else {
+      // Surface light
+      const sg=ctx.createLinearGradient(40,8,120,8);
+      sg.addColorStop(0,'transparent'); sg.addColorStop(0.5,'rgba(255,240,180,0.7)'); sg.addColorStop(1,'transparent');
+      ctx.fillStyle=sg;
+      ctx.fillRect(40,8,80,12);
+    }
+
+    // Blocker (leaf)
+    ctx.fillStyle='#1a3a0a';
+    ctx.beginPath(); ctx.ellipse(80,55,22,12,0,0,Math.PI*2); ctx.fill();
+
+    // Shadow on ground
+    const grd=ctx.createRadialGradient(80,95,0,80,95,hard?16:28);
+    if(hard){
+      grd.addColorStop(0,'rgba(0,0,0,0.85)');
+      grd.addColorStop(0.7,'rgba(0,0,0,0.85)');
+      grd.addColorStop(1,'rgba(0,0,0,0)');
+    } else {
+      grd.addColorStop(0,'rgba(0,0,0,0.5)');
+      grd.addColorStop(0.4,'rgba(0,0,0,0.3)');
+      grd.addColorStop(1,'rgba(0,0,0,0)');
+    }
+    ctx.fillStyle=grd;
+    ctx.beginPath(); ctx.ellipse(80,95,hard?16:28,hard?8:14,0,0,Math.PI*2); ctx.fill();
+
+    // Ground light
+    const lg=ctx.createRadialGradient(80,100,0,80,100,50);
+    lg.addColorStop(0,'rgba(255,240,150,0.15)');
+    lg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=lg;
+    ctx.fillRect(30,75,100,40);
+
+    // Label
+    ctx.fillStyle=hard?'#ffe':'rgba(255,240,180,0.7)';
+    ctx.font='10px monospace'; ctx.textAlign='left';
+    ctx.fillText(hard?'本影(umbra)':'半影(penumbra)',8,H-8);
+  }
+  drawShadow('hard-shadow',true);
+  drawShadow('soft-shadow',false);
+})();
+
+// --- 6. Patch demo (interactive) ---
+(function(){
+  const c=document.getElementById('patch-demo');
+  if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  let patches=[];
+
+  ctx.fillStyle='#010601'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#2a3a1a'; ctx.font='11px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('← クリックで光を追加',W/2,H/2);
+
+  function addPatch(x,y){
+    const hard=Math.random()<0.3;
+    patches.push({x,y,r:hard?15+Math.random()*15:30+Math.random()*40,
+      life:1,decay:hard?.015:.007,hard,
+      scx:0.6+Math.random()*.8,scy:0.5+Math.random()*.7,
+      rot:Math.random()*Math.PI});
+  }
+
+  c.addEventListener('click',e=>{
+    const r=c.getBoundingClientRect();
+    addPatch((e.clientX-r.left)*(W/r.width),(e.clientY-r.top)*(H/r.height));
+  });
+  c.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    const r=c.getBoundingClientRect(),t=e.touches[0];
+    addPatch((t.clientX-r.left)*(W/r.width),(t.clientY-r.top)*(H/r.height));
+  },{passive:false});
+
+  function loop(){
+    ctx.fillStyle='rgba(1,6,1,0.04)'; ctx.fillRect(0,0,W,H);
+    patches.forEach(p=>{
+      p.life-=p.decay;
+      if(p.life<=0)return;
+      const a=p.life*(p.hard?.65:.25);
+      ctx.save();
+      ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.scale(p.scx,p.scy);
+      const g=ctx.createRadialGradient(0,0,0,0,0,p.r);
+      g.addColorStop(0,`hsla(62,100%,82%,${a})`);
+      g.addColorStop(p.hard?.65:.4,`hsla(62,100%,72%,${a*.5})`);
+      g.addColorStop(1,`hsla(62,100%,80%,0)`);
+      ctx.globalCompositeOperation='lighter';
+      ctx.fillStyle=g;
+      ctx.beginPath(); ctx.arc(0,0,p.r,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    });
+    patches=patches.filter(p=>p.life>0);
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+// --- 7. Blend mode demo ---
+(function(){
+  const c=document.getElementById('blend-demo');
+  if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  ctx.fillStyle='#07070f'; ctx.fillRect(0,0,W,H);
+
+  // Left: source-over
+  const lx=30;
+  ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle='rgba(255,80,0,0.7)';
+  ctx.beginPath(); ctx.arc(lx+30,H/2,35,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(0,80,255,0.7)';
+  ctx.beginPath(); ctx.arc(lx+60,H/2,35,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#5a5a8a'; ctx.font='11px monospace'; ctx.textAlign='center';
+  ctx.fillText('source-over',lx+45,H-10);
+  ctx.fillText('（通常合成）',lx+45,H-10+12);
+
+  // Right: lighter
+  const rx=200;
+  ctx.fillStyle='#07070f';
+  ctx.fillRect(rx-10,0,W-rx+10,H);
+  ctx.globalCompositeOperation='lighter';
+  ctx.fillStyle='rgba(255,80,0,0.6)';
+  ctx.beginPath(); ctx.arc(rx+30,H/2,35,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(0,80,255,0.6)';
+  ctx.beginPath(); ctx.arc(rx+60,H/2,35,0,Math.PI*2); ctx.fill();
+  ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle='#a8c860'; ctx.font='11px monospace'; ctx.textAlign='center';
+  ctx.fillText('lighter',rx+45,H-10);
+  ctx.fillText('（加算合成）',rx+45,H-10+12);
+
+  // Divider
+  ctx.strokeStyle='#2a2a4a'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(W/2,10); ctx.lineTo(W/2,H-10); ctx.stroke();
+
+  // Labels
+  ctx.fillStyle='#4a4a6a'; ctx.textAlign='center'; ctx.font='10px monospace';
+  ctx.fillText('重なっても明るくならない', W/4, 16);
+  ctx.fillStyle='#8aaa40';
+  ctx.fillText('重なると明るくなる！', W*3/4, 16);
+})();
+</script>
+</body>
+</html>
