@@ -384,9 +384,9 @@ class Circle {
     this.tx = this.x;   // target x
     this.ty = this.y;   // target y
 
-    // 透明度（論文: フレームごとに上下させる）
-    this.alpha     = 0.55 + Math.random() * 0.4;  // 初期は可視状態
-    this.fadeRate  = 0.0025 + Math.random() * 0.0035; // 徐々に消えるレート
+    // 透明度（論文: 動体検出時だけ現れ、静止すると消える）
+    this.alpha     = 0;                             // 初期は完全に非表示
+    this.fadeRate  = 0.005 + Math.random() * 0.007; // フェードアウト速度（速めに消える）
 
     // 減速処理: イージング係数（小さいほど遅く・よりなめらか）
     this.ease = 0.018 + Math.random() * 0.048;
@@ -408,8 +408,8 @@ class Circle {
     this.tx = this.r + Math.random() * (W - 2 * this.r);
     this.ty = this.r + Math.random() * (H - 2 * this.r);
 
-    // 論文「図形の透明度を上げる」→ 可視状態に戻す
-    this.alpha = Math.min(0.92, this.alpha + 0.45);
+    // 論文「図形の透明度を上げる」→ 動体検出で一気に可視化
+    this.alpha = 0.75 + Math.random() * 0.2;  // 0.75〜0.95 に設定（上限なし・直接代入）
   }
 
   // ---- 毎フレームの更新 ----
@@ -420,10 +420,10 @@ class Circle {
 
     // 論文「図形の透明度を下げる」→ 徐々に消えていく
     if (hasMotion) {
-      // 動体検出中は消えにくい（ゆっくりフェード）
-      this.alpha = Math.max(0, this.alpha - this.fadeRate * 0.35);
+      // 動体検出中: ゆっくりフェード（scatter()で補充されるため残存する）
+      this.alpha = Math.max(0, this.alpha - this.fadeRate * 0.4);
     } else {
-      // 変化なし → 通常速度でフェードアウト
+      // 変化なし → 通常速度でフェードアウト（数秒で完全に消える）
       this.alpha = Math.max(0, this.alpha - this.fadeRate);
     }
   }
