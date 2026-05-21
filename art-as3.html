@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>インタラクティブアート — ActionScript 3.0 実装</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070f;--card:#0d0d1e;--border:#1e1e3e;--text:#dde5f0;--muted:#6e7890;
+  --purple:#9b72f5;--cyan:#00d4ff;--orange:#ff7043;--green:#00e676;--yellow:#ffd740;
+  --red:#ff5252;--code-bg:#090914;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
+     background:var(--bg);color:var(--text);line-height:1.85;font-size:16px}
+
+header{
+  background:radial-gradient(ellipse 60% 60% at 40% 50%,rgba(255,82,82,.08) 0%,transparent 70%),
+             radial-gradient(ellipse 50% 60% at 70% 50%,rgba(155,114,245,.07) 0%,transparent 70%),
+             #07070f;
+  border-bottom:1px solid var(--border);
+  padding:52px 20px 44px;text-align:center;
+}
+header h1{font-size:clamp(1.6rem,3.5vw,2.6rem);font-weight:900;letter-spacing:-.02em;
+  background:linear-gradient(135deg,#ffab40 0%,#ff5252 40%,#9b72f5 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:10px}
+header p{color:var(--muted);font-size:1rem;margin-bottom:18px}
+.tags{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.tag{background:rgba(255,82,82,.1);border:1px solid rgba(255,82,82,.3);
+     color:#ff7070;padding:4px 14px;border-radius:20px;font-size:.82rem}
+.tag.g{background:rgba(155,114,245,.1);border-color:rgba(155,114,245,.3);color:var(--purple)}
+
+main{max-width:1000px;margin:0 auto;padding:30px 20px 80px}
+
+/* Warning banner */
+.warn-banner{
+  background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.3);
+  border-radius:14px;padding:20px 24px;margin:0 0 32px;
+  display:flex;gap:16px;align-items:flex-start;
+}
+.warn-banner .icon{font-size:1.8rem;flex-shrink:0;line-height:1}
+.warn-banner h3{color:#ff7070;font-size:1rem;margin-bottom:8px}
+.warn-banner p{font-size:.93rem;color:var(--text);line-height:1.75}
+
+/* Section layout */
+section{margin:40px 0}
+section h2{font-size:1.35rem;font-weight:700;margin-bottom:18px;
+  display:flex;align-items:center;gap:10px}
+section h2::before{content:'';display:block;width:4px;height:1.2em;
+  background:linear-gradient(135deg,#ff7043,#9b72f5);border-radius:2px}
+p{margin:10px 0;font-size:.97rem}
+ul,ol{padding-left:22px;margin:10px 0}
+li{margin:6px 0;font-size:.96rem}
+strong{color:#fff}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:13px;
+      padding:22px 24px;margin:14px 0}
+.card h3{font-size:1rem;margin-bottom:12px;color:var(--cyan)}
+
+/* Step cards */
+.steps{display:flex;flex-direction:column;gap:12px;margin:16px 0}
+.step{background:var(--card);border:1px solid var(--border);border-radius:12px;
+      padding:18px 22px;display:flex;gap:16px;align-items:flex-start}
+.step-num{width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,#ff7043,#9b72f5);
+  color:#fff;font-weight:800;font-size:.95rem;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-body h4{font-size:.97rem;color:#fff;margin-bottom:5px}
+.step-body p{font-size:.91rem;color:var(--muted);margin:0}
+
+/* Compare table */
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.9rem}
+th{background:#0c0c1e;padding:11px 15px;text-align:left;font-weight:600;
+   border-bottom:2px solid var(--border);color:var(--cyan)}
+td{padding:11px 15px;border-bottom:1px solid var(--border)}
+tr:hover td{background:rgba(155,114,245,.04)}
+.mark-as{color:#ff7070;font-weight:700}
+.mark-js{color:var(--cyan)}
+
+/* Code block */
+.cb{background:var(--code-bg);border:1px solid var(--border);
+    border-radius:12px;overflow:hidden;margin:14px 0;font-size:.86rem}
+.ch{background:#0c0c1e;padding:8px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid var(--border)}
+.cl{color:#ff7070;font-size:.77rem;font-weight:700;letter-spacing:.05em}
+.cpbtn{background:rgba(255,82,82,.1);border:1px solid rgba(255,82,82,.25);
+       color:#ff7070;padding:3px 11px;border-radius:5px;
+       cursor:pointer;font-size:.77rem;transition:all .15s}
+.cpbtn:hover{background:rgba(255,82,82,.22)}
+.cpbtn.ok{color:var(--green);border-color:var(--green);background:rgba(0,230,118,.1)}
+pre{padding:18px 20px;overflow-x:auto;line-height:1.72;
+    font-family:'Fira Code','Cascadia Code','Consolas',monospace;color:#c9d1d9}
+.kw{color:#ff7b72}.tp{color:#ffa657}.fn{color:#79c0ff}
+.nm{color:#a5d6ff}.sx{color:#a8d8a8}.cm{color:#6a737d;font-style:italic}
+.cn{color:#ffd700}.cl2{color:#e6db74}
+
+code{background:rgba(255,82,82,.12);color:#ff9090;
+     padding:2px 7px;border-radius:4px;
+     font-family:'Fira Code',monospace;font-size:.87em}
+
+/* SWF embed area */
+.swf-area{
+  background:#000;border:2px solid var(--border);border-radius:14px;
+  overflow:hidden;margin:20px 0;position:relative;
+  aspect-ratio:16/9;max-width:100%;
+}
+.swf-area ruffle-player,
+.swf-area object{width:100%;height:100%;display:block}
+.swf-placeholder{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:16px;padding:32px;text-align:center;
+}
+.swf-placeholder .big-icon{font-size:4rem}
+.swf-placeholder h3{color:var(--muted);font-size:1.1rem}
+.swf-placeholder p{color:var(--muted);font-size:.88rem;max-width:480px;line-height:1.7}
+
+/* Box */
+.box{border-radius:10px;padding:13px 17px;margin:13px 0;
+     display:flex;gap:11px;font-size:.94rem}
+.box.tip{background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2)}
+.box.note{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2)}
+.box .ic{font-size:1.15rem;flex-shrink:0;line-height:1.45}
+.box .bc{line-height:1.72}
+.box.tip strong{color:var(--green)}.box.note strong{color:var(--cyan)}
+
+/* Nav */
+.nav-btns{display:flex;gap:10px;flex-wrap:wrap;margin:28px 0}
+.nav-btns a{text-decoration:none;border:1px solid var(--border);
+  padding:8px 18px;border-radius:8px;font-size:.88rem;color:var(--muted);
+  transition:all .2s}
+.nav-btns a:hover{border-color:var(--purple);color:var(--purple)}
+
+/* Diff flow diagram */
+.flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:20px 0}
+.fbox{background:var(--card);border:1px solid var(--border);
+      border-radius:10px;padding:12px 16px;font-size:.88rem;
+      text-align:center;min-width:130px}
+.fbox.hl{border-color:rgba(255,82,82,.5);background:rgba(255,82,82,.07)}
+.fbox .flabel{font-size:.72rem;color:var(--muted);display:block;margin-bottom:4px}
+.fbox .fval{font-weight:700}
+.farrow{color:var(--muted);font-size:1.2rem}
+
+@media(max-width:640px){.flow{flex-direction:column}.farrow{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>インタラクティブアート — ActionScript 3.0 実装</h1>
+  <p>論文「Webデザインの技術によるインタラクティブアートの可能性」と同一の手法による再実装</p>
+  <div class="tags">
+    <span class="tag">ActionScript 3.0</span>
+    <span class="tag">BitmapData.compare()</span>
+    <span class="tag">Camera API</span>
+    <span class="tag g">論文完全準拠</span>
+  </div>
+</header>
+
+<main>
+
+<!-- ===== 警告バナー ===== -->
+<div class="warn-banner">
+  <div class="icon">⚠️</div>
+  <div>
+    <h3>Flash Player は 2020年12月31日にサポート終了</h3>
+    <p>ActionScript 3.0 は Flash Player / Adobe AIR 上で動作します。現在のブラウザは Flash を内蔵していないため、<strong>コンパイルして Adobe Flash Player Standalone（スタンドアロン版）で実行する必要があります。</strong><br>
+    ソースファイル <code>as3/InteractiveArt.as</code> を以下の手順でコンパイルしてください。</p>
+  </div>
+</div>
+
+<!-- ===== SWF 実行エリア ===== -->
+<section>
+  <h2>SWF 実行エリア</h2>
+  <p>コンパイル済みの <code>as3/InteractiveArt.swf</code> があれば、Adobe Flash Player Standalone で直接開いてください。Ruffle（WebAssembly 版 Flash エミュレータ）による試験的な実行も可能ですが、<strong>Ruffle はカメラ API を未サポートのため映像入力は動作しません。</strong></p>
+
+  <div class="swf-area" id="swf-area">
+    <div class="swf-placeholder" id="swf-placeholder">
+      <div class="big-icon">🎬</div>
+      <h3>SWF ファイルが必要です</h3>
+      <p><code>as3/InteractiveArt.as</code> を Apache Flex SDK または Adobe Animate CC でコンパイルし、生成された <code>as3/InteractiveArt.swf</code> を Adobe Flash Player Standalone で実行してください。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== コンパイル手順 ===== -->
+<section>
+  <h2>コンパイルと実行の手順</h2>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Apache Flex SDK をダウンロード（無料）</h4>
+        <p><a href="https://flex.apache.org/installer.html" target="_blank" style="color:var(--cyan)">flex.apache.org/installer.html</a> から Apache Flex SDK インストーラーをダウンロードして展開する。</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>mxmlc コマンドでコンパイル</h4>
+        <p>コマンドプロンプトまたは PowerShell で以下を実行：</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cb">
+    <div class="ch"><span class="cl">COMMAND PROMPT</span><button class="cpbtn" id="cp-compile">コピー</button></div>
+    <pre id="compile-cmd">cd C:\Users\kirin\interactive-art\as3
+C:\flex-sdk\bin\mxmlc.exe InteractiveArt.as -output InteractiveArt.swf</pre>
+  </div>
+
+  <div class="steps" style="margin-top:12px">
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Adobe Flash Player Standalone をダウンロード</h4>
+        <p><a href="https://www.adobe.com/support/flashplayer/debug_downloads.html" target="_blank" style="color:var(--cyan)">Adobe Debug Downloads</a> から「Flash Player projector」（Windows 版 .exe）をダウンロード。インストール不要、単体実行可能。</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h4>SWF を Flash Player で実行</h4>
+        <p>Flash Player Standalone を起動し、「ファイル → 開く」から <code>InteractiveArt.swf</code> を選択。カメラアクセスの許可を求めるダイアログが表示されたら「許可」を選ぶ。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="box tip"><div class="ic">💡</div><div class="bc"><strong>Adobe Animate CC を使う場合：</strong>新規 ActionScript 3.0 ドキュメントを作成 → ドキュメントクラスに <code>InteractiveArt</code> を指定 → <code>InteractiveArt.as</code> を同フォルダに置いて「ムービープレビュー（Ctrl+Enter）」でコンパイル実行。</div></div>
+</section>
+
+<!-- ===== 論文との対応 ===== -->
+<section>
+  <h2>論文の手法と ActionScript 関数の対応</h2>
+
+  <table>
+    <tr>
+      <th>処理</th>
+      <th class="mark-as">論文（ActionScript）</th>
+      <th class="mark-js">JavaScript 実装（index.html）</th>
+    </tr>
+    <tr>
+      <td>カメラ取得</td>
+      <td><code>Camera.getCamera()</code></td>
+      <td><code>navigator.mediaDevices.getUserMedia()</code></td>
+    </tr>
+    <tr>
+      <td>フレームキャプチャ</td>
+      <td><code>BitmapData.draw(video, matrix)</code></td>
+      <td><code>ctx.drawImage(video)</code> + <code>getImageData()</code></td>
+    </tr>
+    <tr>
+      <td><strong>画像差分（核心）</strong></td>
+      <td><strong><code>BitmapData.compare()</code></strong> ← 組み込み関数</td>
+      <td>手動ピクセルループ（<code>(dr+dg+db)/3 &gt; threshold</code>）</td>
+    </tr>
+    <tr>
+      <td>ピクセル読み取り</td>
+      <td><code>BitmapData.getPixel32(x, y)</code></td>
+      <td>配列インデックス計算 <code>data[(y*W+x)*4]</code></td>
+    </tr>
+    <tr>
+      <td>残像効果</td>
+      <td><code>BitmapData.colorTransform(rect, ct)</code></td>
+      <td><code>ctx.fillStyle='rgba(0,0,0,fade)'</code></td>
+    </tr>
+    <tr>
+      <td>円描画</td>
+      <td><code>Graphics.drawCircle(x, y, r)</code></td>
+      <td><code>ctx.arc(x, y, r, 0, Math.PI*2)</code></td>
+    </tr>
+    <tr>
+      <td>曲線描画</td>
+      <td><code>Graphics.curveTo(cx, cy, x, y)</code> ← 2次ベジェ</td>
+      <td><code>ctx.bezierCurveTo(...)</code> ← 3次ベジェ</td>
+    </tr>
+    <tr>
+      <td>音声生成</td>
+      <td><code>Sound</code> + <code>SampleDataEvent</code></td>
+      <td>Web Audio API <code>OscillatorNode</code></td>
+    </tr>
+    <tr>
+      <td>鏡像変換</td>
+      <td><code>Matrix(-1, 0, 0, 1, W, 0)</code></td>
+      <td><code>ctx.scale(-1, 1)</code> + <code>ctx.translate(W, 0)</code></td>
+    </tr>
+  </table>
+</section>
+
+<!-- ===== BitmapData.compare() 解説 ===== -->
+<section>
+  <h2>BitmapData.compare() の動作詳細</h2>
+  <p>これが論文で言及されていた「ActionScript の関数」の正体です。</p>
+
+  <div class="flow">
+    <div class="fbox">
+      <span class="flabel">前フレーム (BitmapData)</span>
+      <span class="fval">prevBD</span>
+    </div>
+    <div class="farrow">→</div>
+    <div class="fbox hl">
+      <span class="flabel">ActionScript 組み込み</span>
+      <span class="fval">prevBD.compare(curBD)</span>
+    </div>
+    <div class="farrow">→</div>
+    <div class="fbox">
+      <span class="flabel">差分ビットマップ</span>
+      <span class="fval">diffBD</span>
+    </div>
+    <div class="farrow">→</div>
+    <div class="fbox">
+      <span class="flabel">閾値判定</span>
+      <span class="fval">motionPoints[]</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>compare() の戻り値</h3>
+    <table>
+      <tr><th>戻り値</th><th>意味</th></tr>
+      <tr><td><code>0</code>（整数）</td><td>2フレームが完全に同一 → 動体なし</td></tr>
+      <tr><td><code>-3</code>（整数）</td><td>幅が異なる（通常発生しない）</td></tr>
+      <tr><td><code>-4</code>（整数）</td><td>高さが異なる（通常発生しない）</td></tr>
+      <tr><td><code>BitmapData</code></td><td>差分ビットマップ（各ピクセルが差分値）</td></tr>
+    </table>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h3>差分ビットマップのピクセル形式（ARGB 32bit）</h3>
+    <table>
+      <tr><th>alpha ビット</th><th>RGB ビット</th><th>意味</th></tr>
+      <tr><td><code>0x00</code></td><td><code>0x000000</code></td><td>前後フレームで同一ピクセル → 動体なし</td></tr>
+      <tr><td><code>0xFF</code></td><td>R=|ΔR|, G=|ΔG|, B=|ΔB|</td><td>差異あり → (R+G+B)/3 &gt; threshold なら採用</td></tr>
+    </table>
+  </div>
+
+  <div class="cb">
+    <div class="ch"><span class="cl">ACTIONSCRIPT 3.0 — 差分抽出の核心コード</span><button class="cpbtn" id="cp-core">コピー</button></div>
+    <pre id="core-code"></pre>
+  </div>
+</section>
+
+<!-- ===== AS3 ソースコード ===== -->
+<section>
+  <h2>ActionScript 3.0 ソースコード（全文）</h2>
+  <p>ファイル: <code>as3/InteractiveArt.as</code></p>
+
+  <div class="box note"><div class="ic">📝</div><div class="bc"><strong>コードの構成：</strong>論文の手法を忠実に再現するため、<code>Camera.getCamera()</code> → <code>BitmapData.draw()</code> → <code>BitmapData.compare()</code> → <code>getPixel32()</code> → 閾値判定 → <code>Graphics</code> 描画 という処理フローをそのまま実装しています。</div></div>
+
+  <div class="cb">
+    <div class="ch"><span class="cl">ACTIONSCRIPT 3.0 — InteractiveArt.as</span><button class="cpbtn" id="cp-full">コピー</button></div>
+    <pre id="full-code" style="max-height:600px;overflow-y:auto"></pre>
+  </div>
+</section>
+
+<!-- ===== ナビゲーション ===== -->
+<div class="nav-btns">
+  <a href="index.html">← JavaScript 実装（index.html）</a>
+  <a href="art1-evoloop.html">Evoloop アート</a>
+  <a href="art2-komorebi.html">Komorebi アート</a>
+  <a href="learn.html">中学生向け解説</a>
+  <a href="learn2.html">高校生向け解説</a>
+  <a href="learn3.html">Processing 学習</a>
+</div>
+
+</main>
+
+<script>
+// ============================================================
+//  AS3 ソースコード（表示・コピー用）
+// ============================================================
+const CORE_CODE = `// ---- Step 1: 現在フレームをキャプチャ（左右反転 = 鏡像） ----
+var curBD:BitmapData = new BitmapData(W, H, false, 0x000000);
+curBD.draw(_vid, new Matrix(-1, 0, 0, 1, W, 0));
+
+// ---- Step 2: ActionScript 組み込み関数で差分ビットマップ取得 ----
+// ★ BitmapData.compare() が論文で「ActionScriptの関数」として使用
+var diffObj:Object = _prevBD.compare(curBD);
+
+if (diffObj is BitmapData) {
+  var diffBD:BitmapData = BitmapData(diffObj);
+
+  // ---- Step 3: グリッドサンプリングで動体座標を抽出 ----
+  for (var y:int = 0; y < H; y += STEP) {
+    for (var x:int = 0; x < W; x += STEP) {
+
+      var px:uint   = diffBD.getPixel32(x, y);
+      var alpha:int = int((px >>> 24) & 0xFF);
+
+      if (alpha > 0) {              // alpha > 0 = 差異あり
+        var dr:int = int((px >>> 16) & 0xFF);
+        var dg:int = int((px >>> 8)  & 0xFF);
+        var db:int = int( px         & 0xFF);
+        var avg:int = (dr + dg + db) / 3;
+
+        if (avg > _threshold) {     // 閾値を超えたら採用
+          motionPts.push(new Point(x, y));
+        }
+      }
+    }
+  }
+  diffBD.dispose();
+}`;
+
+const FULL_CODE = `package {
+  import flash.display.*;
+  import flash.events.*;
+  import flash.geom.*;
+  import flash.media.*;
+  import flash.text.*;
+  import flash.utils.*;
+
+  [SWF(width="1280", height="720", frameRate="30", backgroundColor="#000000")]
+
+  public class InteractiveArt extends Sprite {
+
+    private static const W:int           = 1280;
+    private static const H:int           = 720;
+    private static const FPS:Number      = 30;
+    private static const STEP:int        = 6;
+    private static const MODE_FRAMES:int = 1800;
+
+    private var _cam:Camera;
+    private var _vid:Video;
+    private var _prevBD:BitmapData;
+    private var _canvasBD:BitmapData;
+    private var _canvasDisp:Bitmap;
+    private var _threshold:int  = 25;
+    private var _mode:int       = 0;
+    private var _frameNum:int   = 0;
+    private var _mode1Color:uint;
+    private var _fadeCT:ColorTransform;
+    private var _fullRect:Rectangle;
+    private var _sound:Sound;
+    private var _soundCh:SoundChannel;
+    private var _soundFreq:Number   = 440;
+    private var _soundPhase:Number  = 0;
+    private var _soundActive:Boolean = false;
+    private var _soundTimer:Timer;
+    private var _statusTF:TextField;
+
+    public function InteractiveArt() {
+      stage.scaleMode = StageScaleMode.NO_SCALE;
+      stage.align     = StageAlign.TOP_LEFT;
+      _initDisplay();
+      _initCamera();
+      _initAudio();
+      _initUI();
+      addEventListener(Event.ENTER_FRAME, _onFrame);
+    }
+
+    private function _initDisplay():void {
+      _canvasBD   = new BitmapData(W, H, false, 0x000000);
+      _canvasDisp = new Bitmap(_canvasBD);
+      addChild(_canvasDisp);
+      _fadeCT   = new ColorTransform(0.94, 0.94, 0.94, 1.0, 0, 0, 0, 0);
+      _fullRect = new Rectangle(0, 0, W, H);
+      _mode1Color = uint(Math.random() * 0xFFFFFF);
+    }
+
+    private function _initCamera():void {
+      // ActionScript 組み込み API でカメラを取得（論文の手法）
+      _cam = Camera.getCamera();
+      if (_cam == null) { trace("カメラが見つかりません"); return; }
+      _cam.setMode(W, H, FPS);
+      _cam.setQuality(0, 90);
+      _vid = new Video(W, H);
+      _vid.attachCamera(_cam);
+    }
+
+    private function _initAudio():void {
+      _sound = new Sound();
+      _sound.addEventListener(SampleDataEvent.SAMPLE_DATA, _onSample);
+      _soundTimer = new Timer(250, 1);
+      _soundTimer.addEventListener(TimerEvent.TIMER_COMPLETE,
+        function(e:TimerEvent):void {
+          if (_soundCh) { _soundCh.stop(); _soundActive = false; }
+        });
+    }
+
+    private function _onSample(e:SampleDataEvent):void {
+      for (var i:int = 0; i < 2048; i++) {
+        _soundPhase += _soundFreq / 44100.0;
+        if (_soundPhase >= 1.0) _soundPhase -= 1.0;
+        var s:Number = Math.sin(_soundPhase * Math.PI * 2.0) * 0.06;
+        e.data.writeFloat(s);
+        e.data.writeFloat(s);
+      }
+    }
+
+    private function _playNote(y:int):void {
+      _soundFreq = 1200.0 - (Number(y) / Number(H)) * (1200.0 - 80.0);
+      if (!_soundActive) { _soundCh = _sound.play(); _soundActive = true; }
+      _soundTimer.reset();
+      _soundTimer.start();
+    }
+
+    private function _initUI():void {
+      _statusTF = new TextField();
+      _statusTF.defaultTextFormat = new TextFormat("_typewriter", 11, 0x888888);
+      _statusTF.autoSize = TextFieldAutoSize.LEFT;
+      _statusTF.selectable = false;
+      _statusTF.background = true;
+      _statusTF.backgroundColor = 0x111111;
+      _statusTF.x = 8; _statusTF.y = 8;
+      addChild(_statusTF);
+      stage.addEventListener(KeyboardEvent.KEY_DOWN, _onKey);
+    }
+
+    private function _onKey(e:KeyboardEvent):void {
+      switch (e.keyCode) {
+        case 77:  _mode = (_mode + 1) % 3; _mode1Color = uint(Math.random() * 0xFFFFFF); break;
+        case 38:  _threshold = Math.min(100, _threshold + 5); break;
+        case 40:  _threshold = Math.max(5,   _threshold - 5); break;
+      }
+    }
+
+    private function _onFrame(e:Event):void {
+      _frameNum++;
+      if (_cam == null || _vid == null) return;
+      if (_frameNum > 0 && (_frameNum % MODE_FRAMES) === 0) {
+        _mode = (_mode + 1) % 3;
+        _mode1Color = uint(Math.random() * 0xFFFFFF);
+      }
+
+      // Step 1: 現在フレームをキャプチャ（鏡像）
+      var curBD:BitmapData = new BitmapData(W, H, false, 0x000000);
+      curBD.draw(_vid, new Matrix(-1, 0, 0, 1, W, 0));
+
+      if (_prevBD != null) {
+
+        // Step 2: BitmapData.compare() でフレーム差分取得（論文の核心）
+        var diffObj:Object = _prevBD.compare(curBD);
+
+        if (diffObj is BitmapData) {
+          var diffBD:BitmapData = BitmapData(diffObj);
+
+          // Step 3: 残像効果（RGB を 0.94 倍に暗くする）
+          _canvasBD.colorTransform(_fullRect, _fadeCT);
+
+          // Step 4: 動体座標を抽出して描画
+          var motionPts:Vector.<Point> = _extractMotion(diffBD);
+          diffBD.dispose();
+
+          if (motionPts.length > 0) {
+            _drawShapes(motionPts);
+            if (Math.random() < 0.35) {
+              var rp:Point = motionPts[int(Math.random() * motionPts.length)];
+              _playNote(rp.y);
+            }
+          }
+        }
+      }
+
+      if (_prevBD != null) _prevBD.dispose();
+      _prevBD = curBD;
+
+      _statusTF.text = "Mode " + _mode + "  | 閾値: " + _threshold +
+                       "  | M: 切替 / ↑↓: 感度";
+    }
+
+    private function _extractMotion(diffBD:BitmapData):Vector.<Point> {
+      var pts:Vector.<Point> = new Vector.<Point>();
+      for (var y:int = 0; y < H; y += STEP) {
+        for (var x:int = 0; x < W; x += STEP) {
+          var px:uint   = diffBD.getPixel32(x, y);
+          var alpha:int = int((px >>> 24) & 0xFF);
+          if (alpha > 0) {
+            var dr:int = int((px >>> 16) & 0xFF);
+            var dg:int = int((px >>> 8)  & 0xFF);
+            var db:int = int( px         & 0xFF);
+            if ((dr + dg + db) / 3 > _threshold) {
+              pts.push(new Point(x, y));
+            }
+          }
+        }
+      }
+      return pts;
+    }
+
+    private function _drawShapes(pts:Vector.<Point>):void {
+      var sp:Sprite  = new Sprite();
+      var g:Graphics = sp.graphics;
+      var pt:Point;
+
+      switch (_mode) {
+        case 0:
+          for each (pt in pts) {
+            var r0:Number = 4 + Math.random() * 28;
+            g.beginFill(uint(Math.random() * 0xFFFFFF), 0.8);
+            g.drawCircle(pt.x+(Math.random()-.5)*16, pt.y+(Math.random()-.5)*16, r0);
+            g.endFill();
+          }
+          break;
+        case 1:
+          g.beginFill(_mode1Color, 0.8);
+          for each (pt in pts) g.drawCircle(pt.x, pt.y, 10);
+          g.endFill();
+          break;
+        case 2:
+          for each (pt in pts) {
+            var sp2:Number = 80 + Math.random() * 40;
+            g.lineStyle(2, uint(Math.random() * 0xFFFFFF), 0.8);
+            g.moveTo(pt.x, pt.y);
+            g.curveTo(
+              pt.x+(Math.random()-.5)*sp2, pt.y+(Math.random()-.5)*sp2,
+              pt.x+(Math.random()-.5)*sp2*1.5, pt.y+(Math.random()-.5)*sp2*1.5);
+          }
+          break;
+      }
+
+      _canvasBD.draw(sp);
+    }
+  }
+}`;
+
+// コードを pre 要素に設定
+document.getElementById('core-code').textContent = CORE_CODE;
+document.getElementById('full-code').textContent = FULL_CODE;
+
+// シンタックスハイライト（AS3用）
+function highlightAS3(el){
+  let h = el.innerHTML;
+  // コメント
+  h = h.replace(/(\/\/[^\n]*)/g,'<span class="cm">$1</span>');
+  h = h.replace(/(\/\*[\s\S]*?\*\/)/g,'<span class="cm">$1</span>');
+  // 文字列
+  h = h.replace(/"([^"\\]|\\.)*"/g, m=>'<span class="sx">'+m+'</span>');
+  // キーワード
+  ['var','function','class','package','import','extends','implements',
+   'public','private','protected','static','override','final',
+   'new','return','if','else','for','while','foreach','each','in',
+   'true','false','null','void','is','as','this','super','break','continue'].forEach(k=>{
+    h = h.replace(new RegExp('\\b'+k+'\\b','g'),'<span class="kw">'+k+'</span>');
+  });
+  // 型
+  ['int','uint','Number','String','Boolean','Object','Array','Vector',
+   'BitmapData','Bitmap','Sprite','Stage','Graphics','Matrix','Rectangle',
+   'ColorTransform','Point','Camera','Video','Sound','SoundChannel','Timer',
+   'TextField','TextFormat','Event','KeyboardEvent','TimerEvent','SampleDataEvent'].forEach(k=>{
+    h = h.replace(new RegExp('\\b'+k+'\\b','g'),'<span class="tp">'+k+'</span>');
+  });
+  // 定数・組み込み
+  ['Math','StageScaleMode','StageAlign','TextFieldAutoSize','NO_SCALE','TOP_LEFT',
+   'ENTER_FRAME','KEY_DOWN','TIMER_COMPLETE','SAMPLE_DATA','LEFT'].forEach(k=>{
+    h = h.replace(new RegExp('\\b'+k+'\\b','g'),'<span class="cn">'+k+'</span>');
+  });
+  // メソッド呼び出し
+  ['getCamera','setMode','setQuality','attachCamera','draw','compare','getPixel32',
+   'colorTransform','dispose','push','play','stop','reset','start','addEventListener',
+   'drawCircle','curveTo','moveTo','beginFill','endFill','lineStyle','writeFloat',
+   'sin','cos','random','min','max','trace'].forEach(k=>{
+    h = h.replace(new RegExp('\\b('+k+')(?=\\()','g'),'<span class="fn">$1</span>');
+  });
+  // 数値
+  h = h.replace(/\b(\d+\.?\d*)\b(?![^<]*>)/g,'<span class="nm">$1</span>');
+  el.innerHTML = h;
+}
+highlightAS3(document.getElementById('core-code'));
+highlightAS3(document.getElementById('full-code'));
+
+// コピーボタン
+function setupCopy(btnId, sourceId, rawText){
+  document.getElementById(btnId).addEventListener('click',()=>{
+    const text = rawText || document.getElementById(sourceId).textContent;
+    navigator.clipboard.writeText(text).then(()=>{
+      const btn = document.getElementById(btnId);
+      btn.textContent='✓ コピー完了'; btn.classList.add('ok');
+      setTimeout(()=>{btn.textContent='コピー';btn.classList.remove('ok');},1800);
+    });
+  });
+}
+setupCopy('cp-compile','compile-cmd');
+setupCopy('cp-core','core-code', CORE_CODE);
+setupCopy('cp-full','full-code', FULL_CODE);
+
+// Ruffle での SWF 表示試行
+window.RufflePlayer = window.RufflePlayer || {};
+window.RufflePlayer.config = { allowScriptAccess: true };
+
+const script = document.createElement('script');
+script.src = 'https://unpkg.com/@ruffle-rs/ruffle';
+script.onload = function(){
+  // SWF ファイルが存在するか確認してから埋め込む
+  fetch('as3/InteractiveArt.swf', {method:'HEAD'})
+    .then(r=>{
+      if(r.ok){
+        const placeholder = document.getElementById('swf-placeholder');
+        const area = document.getElementById('swf-area');
+        placeholder.remove();
+        const ruffle = window.RufflePlayer.newest();
+        const player = ruffle.createPlayer();
+        player.style.width  = '100%';
+        player.style.height = '100%';
+        area.appendChild(player);
+        player.load('as3/InteractiveArt.swf');
+      }
+    })
+    .catch(()=>{ /* SWF なし — placeholder のまま */ });
+};
+document.head.appendChild(script);
+</script>
+</body>
+</html>
