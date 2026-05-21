@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>シンサカエ・ナイト・ミュージアム 2011 — インタラクティブアート</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: monospace; }
+    #main-canvas { display: block; }
+
+    /* ===== Setup Screen ===== */
+    #setup-screen {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #000; z-index: 100;
+    }
+    #setup-screen.hidden { display: none; }
+    .setup-box {
+      background: #0d0d14; border: 1px solid #2a2a4a;
+      border-radius: 10px; padding: 36px; width: 440px; color: #eee;
+    }
+    .setup-box h1 {
+      font-size: 17px; margin-bottom: 6px;
+      color: #fff; letter-spacing: 0.04em;
+    }
+    .setup-box .subtitle {
+      font-size: 11px; color: #666; margin-bottom: 28px;
+      letter-spacing: 0.06em;
+    }
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: 11px; color: #888; margin-bottom: 7px; letter-spacing: 0.04em; }
+    select { width: 100%; background: #141420; color: #ddd; border: 1px solid #333; padding: 9px 10px; border-radius: 5px; font-size: 13px; font-family: monospace; }
+    input[type=range] { width: 100%; accent-color: #e8a030; cursor: pointer; }
+    .range-row { display: flex; align-items: center; gap: 12px; }
+    .range-row input { flex: 1; }
+    .range-val { width: 36px; text-align: right; font-size: 13px; color: #e8a030; }
+    .btn-perm {
+      width: 100%; padding: 13px; background: #e8a030; color: #000;
+      border: none; border-radius: 5px; font-size: 14px; font-weight: bold;
+      cursor: pointer; letter-spacing: 0.03em;
+    }
+    .btn-perm:hover { background: #f0b840; }
+    .btn-perm:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-start {
+      width: 100%; padding: 13px; background: #e8a030; color: #000;
+      border: none; border-radius: 5px; font-size: 14px; font-weight: bold;
+      cursor: pointer; margin-top: 6px; letter-spacing: 0.03em;
+    }
+    .btn-start:hover { background: #f0b840; }
+    .btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-retry {
+      margin-top: 6px; background: #1a1a28; color: #888;
+      border: 1px solid #333; border-radius: 4px;
+      padding: 4px 10px; font-size: 11px; cursor: pointer;
+    }
+    .btn-retry:hover { color: #aaa; }
+    .error-msg { color: #f77; font-size: 11px; margin-top: 8px; display: none; }
+
+    .info-block {
+      background: #0a0a14; border: 1px solid #1e1e36;
+      border-radius: 6px; padding: 14px 16px; margin-bottom: 22px;
+      font-size: 11px; color: #888; line-height: 1.9;
+    }
+    .info-block strong { color: #e8a030; }
+
+    /* ===== HUD ===== */
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%);
+      transition: opacity 0.6s; pointer-events: none;
+    }
+    #hud.faded { opacity: 0; }
+    .hud-left { font-size: 11px; color: rgba(255,255,255,0.4); line-height: 1.8; }
+    .hud-right { display: flex; gap: 8px; pointer-events: all; }
+    .hud-btn {
+      background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.6);
+      border: 1px solid rgba(255,255,255,0.18); border-radius: 4px;
+      padding: 6px 12px; font-size: 11px; cursor: pointer; font-family: monospace;
+      transition: all 0.2s;
+    }
+    .hud-btn:hover { background: rgba(232,160,48,0.2); color: #e8a030; border-color: rgba(232,160,48,0.4); }
+
+    /* Motion indicator */
+    #motion-ring {
+      position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 10px;
+      pointer-events: none;
+      transition: opacity 0.6s;
+    }
+    #motion-ring.faded { opacity: 0; }
+    #motion-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #333; transition: background 0.1s, box-shadow 0.15s;
+    }
+    #motion-dot.active {
+      background: #e8a030;
+      box-shadow: 0 0 12px 4px rgba(232,160,48,0.5);
+    }
+    #motion-label { font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: 0.08em; }
+
+    /* Threshold panel */
+    #thr-panel {
+      position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.8); border: 1px solid #2a2a4a;
+      border-radius: 8px; padding: 14px 22px; color: #ccc;
+      font-size: 11px; width: 300px;
+      transition: opacity 0.4s;
+    }
+    #thr-panel.hidden { opacity: 0; pointer-events: none; }
+    .thr-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+    .thr-row input { flex: 1; accent-color: #e8a030; }
+    .thr-val { width: 30px; text-align: right; color: #e8a030; }
+
+    /* Title overlay (start) */
+    #title-overlay {
+      position: fixed; inset: 0; pointer-events: none;
+      display: flex; align-items: flex-end; justify-content: flex-start;
+      padding: 32px 36px;
+      transition: opacity 2s;
+    }
+    #title-overlay.hidden { opacity: 0; }
+    .title-text h2 {
+      font-size: 15px; font-weight: normal; color: rgba(255,255,255,0.6);
+      letter-spacing: 0.12em; margin-bottom: 4px;
+    }
+    .title-text p {
+      font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="main-canvas"></canvas>
+
+<!-- ===== Setup Screen ===== -->
+<div id="setup-screen">
+  <div class="setup-box">
+    <h1>シンサカエ・ナイト・ミュージアム</h1>
+    <p class="subtitle">INTERACTIVE ART — 2011 / FUKUI CITY</p>
+
+    <div class="info-block">
+      <strong>作品について</strong><br>
+      カメラが映像の変化を検知すると、画面上のカラフルな円が<br>
+      ランダムな方向に散らばり、徐々に消えていきます。<br><br>
+      論文「Webデザインの技術によるインタラクティブアートの可能性」<br>
+      近藤晶（福井工業大学）2011年 シンサカエ・ナイト・ミュージアム展示作品
+    </div>
+
+    <!-- STEP 1 -->
+    <div id="step-perm">
+      <div class="form-group">
+        <label>STEP 1 — カメラへのアクセスを許可</label>
+        <button class="btn-perm" id="btn-perm">📷 カメラを起動する</button>
+        <div class="error-msg" id="perm-err"></div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div id="step-settings" style="display:none">
+      <div class="form-group">
+        <label>カメラ選択</label>
+        <select id="cam-select"></select>
+        <button class="btn-retry" id="btn-retry">🔄 再取得</button>
+      </div>
+      <div class="form-group">
+        <label>感度（カメラ変化の検出レベル）— 低いほど敏感</label>
+        <div class="range-row">
+          <input type="range" id="thr-init" min="5" max="80" value="20">
+          <span class="range-val" id="thr-init-v">20</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>円の数</label>
+        <div class="range-row">
+          <input type="range" id="circle-count" min="20" max="100" value="50" step="5">
+          <span class="range-val" id="circle-count-v">50</span>
+        </div>
+      </div>
+      <button class="btn-start" id="btn-start">▶ 展示を開始する</button>
+      <div class="error-msg" id="start-err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HUD ===== -->
+<div id="hud">
+  <div class="hud-left">
+    <div id="hud-fps">FPS: --</div>
+    <div id="hud-motion">変化量: --</div>
+  </div>
+  <div class="hud-right">
+    <button class="hud-btn" id="btn-thr">感度調整</button>
+    <button class="hud-btn" id="btn-fs">全画面</button>
+    <button class="hud-btn" id="btn-back">設定へ戻る</button>
+  </div>
+</div>
+
+<!-- Motion indicator -->
+<div id="motion-ring" class="faded">
+  <div id="motion-dot"></div>
+  <span id="motion-label">MOTION DETECTED</span>
+</div>
+
+<!-- Threshold panel -->
+<div id="thr-panel" class="hidden">
+  <div style="letter-spacing:0.05em">感度（閾値）— 現場調整用</div>
+  <div class="thr-row">
+    <input type="range" id="thr-slider" min="5" max="80" value="20">
+    <span class="thr-val" id="thr-val">20</span>
+  </div>
+</div>
+
+<!-- Title overlay -->
+<div id="title-overlay">
+  <div class="title-text">
+    <h2>シンサカエ・ナイト・ミュージアム</h2>
+    <p>SHIN-SAKAE NIGHT MUSEUM  /  2011  /  福井市栄町商店街</p>
+  </div>
+</div>
+
+<script>
+// ================================================================
+//  シンサカエ・ナイト・ミュージアム インタラクティブアート
+//
+//  論文「Webデザインの技術によるインタラクティブアートの可能性」
+//  近藤晶 / 福井工業大学 / 2011年
+//
+//  [論文 図1 フローチャートの忠実な再現]
+//  フレーム読込
+//    → Webカメラに変化があったか？
+//    → YES: 図形の透明度を上げる → 図形をランダムに動かす → 図形の透明度を下げる
+//    → NO : そのまま終了
+//
+//  [2012年の雪まつり版(index.html)との根本的な違い]
+//  ・2012年版: BitmapData.compare() で「どこが動いたか」座標を取得 → その座標に円を配置
+//  ・2011年版: ActionScript組み込みカメラ変化検出でスカラー判定（変化あり/なし）
+//             → 画面上に事前生成した円がランダムな方向に散らばる
+//             → 動体の座標とは無関係に円が移動する
+// ================================================================
+
+const canvas   = document.getElementById('main-canvas');
+const ctx      = canvas.getContext('2d');
+
+// 差分検出用オフスクリーンキャンバス
+const diffCanvas = document.createElement('canvas');
+const diffCtx    = diffCanvas.getContext('2d', { willReadFrequently: true });
+
+const video = document.createElement('video');
+video.autoplay = true;
+video.playsInline = true;
+
+// 状態
+let W = 0, H = 0;
+let prevImageData  = null;
+let threshold      = 20;   // ピクセル単位の差分閾値
+let motionMinPixels = 80;  // 「変化あり」と判定するピクセル数の下限
+let motionScore    = 0;    // 平滑化済み変化量（0-100）
+let circles        = [];
+let frameCount     = 0;
+let lastFpsTime    = performance.now();
+let fps            = 0;
+let motionActive   = false;
+let scatterCooldown = 0;   // 散らばりが連続しすぎないようクールダウン
+let hudTimeout;
+let thrPanelOpen   = false;
+
+// ================================================================
+//  設定画面
+// ================================================================
+const setupScreen = document.getElementById('setup-screen');
+
+async function populateCameras() {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const sel = document.getElementById('cam-select');
+  sel.innerHTML = '';
+  devices.filter(d => d.kind === 'videoinput').forEach((d, i) => {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    opt.textContent = d.label || `カメラ ${i + 1}`;
+    if (opt.textContent.toLowerCase().includes('camo')) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if (sel.options.length === 0) {
+    sel.innerHTML = '<option value="">カメラが見つかりません</option>';
+  }
+}
+
+document.getElementById('btn-perm').addEventListener('click', async function () {
+  const btn = this;
+  btn.disabled = true; btn.textContent = '許可を求めています...';
+  const permErr = document.getElementById('perm-err');
+  permErr.style.display = 'none';
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop());
+    await populateCameras();
+    document.getElementById('step-perm').style.display = 'none';
+    document.getElementById('step-settings').style.display = 'block';
+  } catch (e) {
+    permErr.textContent = 'カメラアクセスが拒否されました: ' + e.message;
+    permErr.style.display = 'block';
+    btn.disabled = false; btn.textContent = '📷 もう一度試す';
+  }
+});
+
+document.getElementById('btn-retry').addEventListener('click', async () => {
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop());
+    await populateCameras();
+  } catch (e) {}
+});
+
+document.getElementById('thr-init').addEventListener('input', function () {
+  document.getElementById('thr-init-v').textContent = this.value;
+});
+document.getElementById('circle-count').addEventListener('input', function () {
+  document.getElementById('circle-count-v').textContent = this.value;
+});
+
+document.getElementById('btn-start').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-start');
+  const err = document.getElementById('start-err');
+  err.style.display = 'none';
+  const sel = document.getElementById('cam-select');
+  if (sel.options.length === 0) {
+    err.textContent = 'カメラが見つかりません。'; err.style.display = 'block'; return;
+  }
+  threshold = parseInt(document.getElementById('thr-init').value);
+  btn.disabled = true; btn.textContent = '接続中...';
+  const deviceId = sel.value;
+  const constraints = deviceId
+    ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } }
+    : { video: { width: { ideal: 1280 }, height: { ideal: 720 } } };
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = stream;
+    await new Promise(r => { video.onloadedmetadata = r; });
+    await video.play();
+    setupScreen.classList.add('hidden');
+    initArt(parseInt(document.getElementById('circle-count').value));
+  } catch (e) {
+    err.textContent = '接続失敗: ' + e.message; err.style.display = 'block';
+    btn.disabled = false; btn.textContent = '▶ 展示を開始する';
+  }
+});
+
+// ================================================================
+//  Canvas リサイズ
+// ================================================================
+function resize() {
+  W = canvas.width  = diffCanvas.width  = window.innerWidth;
+  H = canvas.height = diffCanvas.height = window.innerHeight;
+  prevImageData = null;
+}
+window.addEventListener('resize', () => { resize(); if (circles.length) rePositionCircles(); });
+
+// ================================================================
+//  Circle クラス
+//
+//  論文の記述:
+//    「様々なサイズ・色の円をプログラムの実行直後に自動生成している」
+//    「図形の動き方の特徴として、減速処理を行っており、
+//     目標地点に近づくにつれて速度が遅くなる細かな処理等も追加した」
+//    「カラフルな円が動き、徐々に消えていく表現が可能となった」
+// ================================================================
+class Circle {
+  constructor(idx, total) {
+    // 色相を均等に分散し、個体差を加える
+    this.hue  = (idx / total * 360 + Math.random() * 18 - 9 + 360) % 360;
+    this.sat  = 78 + Math.random() * 18;   // 彩度 78-96%
+    this.lit  = 56 + Math.random() * 20;   // 明度 56-76%
+
+    // 論文: 「様々なサイズ」— 大きい円と小さい円が混在
+    // 二乗してスモールサイズ寄りに分布させる（小さい円が多めの自然な分布）
+    const t = Math.random();
+    this.r = 14 + t * t * 72;              // radius: 14〜86px
+
+    // 初期位置（画面全体に散らばる）
+    this.x  = this.r + Math.random() * (W - 2 * this.r);
+    this.y  = this.r + Math.random() * (H - 2 * this.r);
+    this.tx = this.x;   // target x
+    this.ty = this.y;   // target y
+
+    // 透明度（論文: フレームごとに上下させる）
+    this.alpha     = 0.55 + Math.random() * 0.4;  // 初期は可視状態
+    this.fadeRate  = 0.0025 + Math.random() * 0.0035; // 徐々に消えるレート
+
+    // 減速処理: イージング係数（小さいほど遅く・よりなめらか）
+    this.ease = 0.018 + Math.random() * 0.048;
+
+    // 散らばり遅延（全円が同時ではなくわずかにずれる）
+    this.delay = Math.floor(Math.random() * 8);
+    this._delayCounter = 0;
+  }
+
+  // ---- 論文「図形をランダムに動かす」 ----
+  scatter() {
+    if (this._delayCounter < this.delay) {
+      this._delayCounter++;
+      return;
+    }
+    this._delayCounter = 0;
+
+    // ランダムな目標地点を設定（画面内に収める）
+    this.tx = this.r + Math.random() * (W - 2 * this.r);
+    this.ty = this.r + Math.random() * (H - 2 * this.r);
+
+    // 論文「図形の透明度を上げる」→ 可視状態に戻す
+    this.alpha = Math.min(0.92, this.alpha + 0.45);
+  }
+
+  // ---- 毎フレームの更新 ----
+  update(hasMotion) {
+    // 減速処理: 目標に近づくほど移動量が小さくなる（線形補間）
+    this.x += (this.tx - this.x) * this.ease;
+    this.y += (this.ty - this.y) * this.ease;
+
+    // 論文「図形の透明度を下げる」→ 徐々に消えていく
+    if (hasMotion) {
+      // 動体検出中は消えにくい（ゆっくりフェード）
+      this.alpha = Math.max(0, this.alpha - this.fadeRate * 0.35);
+    } else {
+      // 変化なし → 通常速度でフェードアウト
+      this.alpha = Math.max(0, this.alpha - this.fadeRate);
+    }
+  }
+
+  // ---- 描画 ----
+  draw() {
+    if (this.alpha < 0.008) return;
+
+    // 外側のグロー（夜の展示会場での投影効果を再現）
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r * 1.7, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue}, ${this.sat}%, ${this.lit}%, ${this.alpha * 0.10})`;
+    ctx.fill();
+
+    // 中間グロー
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r * 1.2, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue}, ${this.sat}%, ${this.lit}%, ${this.alpha * 0.22})`;
+    ctx.fill();
+
+    // メインの円
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue}, ${this.sat}%, ${this.lit}%, ${this.alpha})`;
+    ctx.fill();
+
+    // ハイライト（中心に明るい点）
+    ctx.beginPath();
+    ctx.arc(this.x - this.r * 0.22, this.y - this.r * 0.22, this.r * 0.28, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue}, 40%, 95%, ${this.alpha * 0.45})`;
+    ctx.fill();
+  }
+}
+
+// ================================================================
+//  円の初期化と再配置
+// ================================================================
+function initCircles(n) {
+  circles = [];
+  for (let i = 0; i < n; i++) {
+    circles.push(new Circle(i, n));
+  }
+}
+
+function rePositionCircles() {
+  circles.forEach(c => {
+    c.x  = c.r + Math.random() * (W - 2 * c.r);
+    c.y  = c.r + Math.random() * (H - 2 * c.r);
+    c.tx = c.x; c.ty = c.y;
+  });
+}
+
+// ================================================================
+//  動体検出（スカラー判定）
+//
+//  論文: ActionScriptの組み込みカメラ変化検出命令を使用
+//        → 変化あり/なし のスカラー結果のみ取得
+//        → 「どこが動いたか」の座標は不要（2012年版との違い）
+//
+//  JS実装: フレーム差分の総ピクセル数をカウントし閾値と比較
+//          → 変化あり (true) / なし (false) のブール値を返す
+// ================================================================
+function detectMotionScalar() {
+  if (video.readyState < 2) return false;
+
+  // 現フレームをオフスクリーンキャンバスに描画（鏡像）
+  diffCtx.save();
+  diffCtx.translate(W, 0);
+  diffCtx.scale(-1, 1);
+  diffCtx.drawImage(video, 0, 0, W, H);
+  diffCtx.restore();
+
+  const current = diffCtx.getImageData(0, 0, W, H);
+  let motionPixels = 0;
+
+  if (prevImageData) {
+    const cur = current.data;
+    const prv = prevImageData.data;
+    // グリッドサンプリング（4px間隔）でスカラー変化量を算出
+    const step = 4;
+    for (let y = 0; y < H; y += step) {
+      for (let x = 0; x < W; x += step) {
+        const i = (y * W + x) * 4;
+        const diff = (Math.abs(cur[i] - prv[i]) + Math.abs(cur[i+1] - prv[i+1]) + Math.abs(cur[i+2] - prv[i+2])) / 3;
+        if (diff > threshold) motionPixels++;
+      }
+    }
+  }
+
+  prevImageData = current;
+
+  // 平滑化（急激な反応を抑える）
+  const raw = motionPixels > motionMinPixels ? 100 : 0;
+  motionScore = motionScore * 0.72 + raw * 0.28;
+
+  return motionScore > 25;
+}
+
+// ================================================================
+//  メインループ
+//
+//  論文 図1 フローチャート:
+//    フレーム読込
+//    → Webカメラに変化があったか？
+//    → YES: 図形の透明度を上げる → 図形をランダムに動かす → 図形の透明度を下げる
+//    → NO : （フェードアウトのみ）→ フレーム終了
+// ================================================================
+function loop() {
+  requestAnimationFrame(loop);
+
+  // ---- フレーム読込 → カメラ変化判定 ----
+  const hasMotion = detectMotionScalar();
+  motionActive = hasMotion;
+
+  // ---- キャンバスをクリア（純粋な黒背景）----
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  // ---- YES分岐: 図形の透明度を上げる → ランダムに動かす ----
+  if (hasMotion) {
+    scatterCooldown--;
+    if (scatterCooldown <= 0) {
+      // すべての円に新しいランダム目標地点を設定（散らばり）
+      circles.forEach(c => c.scatter());
+      // クールダウン: 次の散らばりまでの最短フレーム数
+      // 急激に連続散らばりすると落ち着きがなくなるため調整
+      scatterCooldown = 28 + Math.floor(Math.random() * 20);
+    }
+  } else {
+    // NO分岐: クールダウンを徐々にリセット
+    if (scatterCooldown > 0) scatterCooldown--;
+  }
+
+  // ---- 各円を更新・描画（図形の透明度を下げる → フレーム終了）----
+  circles.forEach(c => {
+    c.update(hasMotion);
+    c.draw();
+  });
+
+  // ---- UI 更新 ----
+  const motDot = document.getElementById('motion-dot');
+  const motRing = document.getElementById('motion-ring');
+  motDot.classList.toggle('active', hasMotion);
+  motRing.classList.toggle('faded', !hasMotion);
+
+  // FPS計測
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsTime > 1000) {
+    fps = Math.round(frameCount * 1000 / (now - lastFpsTime));
+    frameCount = 0; lastFpsTime = now;
+    document.getElementById('hud-fps').textContent = `FPS: ${fps}`;
+    document.getElementById('hud-motion').textContent = `変化量: ${Math.round(motionScore)}`;
+  }
+}
+
+// ================================================================
+//  HUD 自動非表示
+// ================================================================
+function showHud() {
+  document.getElementById('hud').classList.remove('faded');
+  clearTimeout(hudTimeout);
+  hudTimeout = setTimeout(() => document.getElementById('hud').classList.add('faded'), 4000);
+}
+document.addEventListener('mousemove', showHud);
+document.addEventListener('click', showHud);
+
+// ================================================================
+//  HUD ボタン
+// ================================================================
+document.getElementById('btn-thr').addEventListener('click', () => {
+  thrPanelOpen = !thrPanelOpen;
+  const p = document.getElementById('thr-panel');
+  if (thrPanelOpen) {
+    p.classList.remove('hidden');
+    document.getElementById('thr-slider').value = threshold;
+    document.getElementById('thr-val').textContent = threshold;
+  } else {
+    p.classList.add('hidden');
+  }
+});
+
+document.getElementById('thr-slider').addEventListener('input', function () {
+  threshold = parseInt(this.value);
+  document.getElementById('thr-val').textContent = threshold;
+});
+
+document.getElementById('btn-fs').addEventListener('click', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+
+document.getElementById('btn-back').addEventListener('click', () => {
+  prevImageData = null;
+  ctx.clearRect(0, 0, W, H);
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-start').textContent = '▶ 展示を開始する';
+  document.getElementById('step-perm').style.display = 'block';
+  document.getElementById('step-settings').style.display = 'none';
+  document.getElementById('perm-err').style.display = 'none';
+  document.getElementById('btn-perm').disabled = false;
+  document.getElementById('btn-perm').textContent = '📷 カメラを起動する';
+  setupScreen.classList.remove('hidden');
+});
+
+// キーボード
+document.addEventListener('keydown', e => {
+  if (e.key === 'f' || e.key === 'F') document.getElementById('btn-fs').click();
+  if (e.key === 't' || e.key === 'T') document.getElementById('btn-thr').click();
+  if (e.key === ' ')  { circles.forEach(c => c.scatter()); scatterCooldown = 20; }
+  if (e.key === 'Escape' && thrPanelOpen) {
+    thrPanelOpen = false; document.getElementById('thr-panel').classList.add('hidden');
+  }
+});
+
+// ================================================================
+//  アート初期化
+// ================================================================
+function initArt(n) {
+  resize();
+  initCircles(n);
+
+  // タイトルオーバーレイを一定時間後に非表示
+  setTimeout(() => {
+    document.getElementById('title-overlay').classList.add('hidden');
+  }, 5000);
+
+  showHud();
+  loop();
+}
+</script>
+</body>
+</html>
