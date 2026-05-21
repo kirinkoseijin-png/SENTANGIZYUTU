@@ -253,9 +253,11 @@ video.playsInline = true;
 
 // 状態
 let W = 0, H = 0;
-let prevImageData  = null;
+let refImageData   = null;  // 背景フレーム（安定時のみ更新）
+let stableFrames   = 0;     // 連続安定フレーム数
+const STABLE_UPDATE = 20;   // 何フレーム安定→背景更新
 let threshold      = 20;   // ピクセル単位の差分閾値
-let motionMinPixels = 80;  // 「変化あり」と判定するピクセル数の下限
+let motionMinPixels = 300; // 「変化あり」と判定するピクセル数の下限
 let motionScore    = 0;    // 平滑化済み変化量（0-100）
 let circles        = [];
 let frameCount     = 0;
@@ -353,7 +355,8 @@ document.getElementById('btn-start').addEventListener('click', async () => {
 function resize() {
   W = canvas.width  = diffCanvas.width  = window.innerWidth;
   H = canvas.height = diffCanvas.height = window.innerHeight;
-  prevImageData = null;
+  refImageData = null;  // リサイズ時は背景フレームをリセット
+  stableFrames = 0;
 }
 window.addEventListener('resize', () => { resize(); if (circles.length) rePositionCircles(); });
 
@@ -477,14 +480,15 @@ function rePositionCircles() {
 }
 
 // ================================================================
-//  動体検出（スカラー判定）
+//  動体検出（スカラー判定）— 背景減算法
 //
-//  論文: ActionScriptの組み込みカメラ変化検出命令を使用
-//        → 変化あり/なし のスカラー結果のみ取得
-//        → 「どこが動いたか」の座標は不要（2012年版との違い）
+//  前フレームとの差分ではなく「安定した背景フレーム」との差分を使う。
+//  円がイージングで動いているだけでは背景フレームが追いつくため
+//  誤検出ループが発生しない。人が動いた瞬間のみ背景から大きく外れて検出される。
 //
-//  JS実装: フレーム差分の総ピクセル数をカウントし閾値と比較
-//          → 変化あり (true) / なし (false) のブール値を返す
+//  背景フレームの更新条件:
+//    変化なし と判定されたフレームが STABLE_UPDATE 回連続したとき
+//    → 現在の映像を新しい背景として記録
 // ================================================================
 function detectMotionScalar() {
   if (video.readyState < 2) return false;
@@ -497,29 +501,43 @@ function detectMotionScalar() {
   diffCtx.restore();
 
   const current = diffCtx.getImageData(0, 0, W, H);
-  let motionPixels = 0;
 
-  if (prevImageData) {
-    const cur = current.data;
-    const prv = prevImageData.data;
-    // グリッドサンプリング（4px間隔）でスカラー変化量を算出
-    const step = 4;
-    for (let y = 0; y < H; y += step) {
-      for (let x = 0; x < W; x += step) {
-        const i = (y * W + x) * 4;
-        const diff = (Math.abs(cur[i] - prv[i]) + Math.abs(cur[i+1] - prv[i+1]) + Math.abs(cur[i+2] - prv[i+2])) / 3;
-        if (diff > threshold) motionPixels++;
-      }
+  // 初回フレームは背景として登録するだけ
+  if (!refImageData) {
+    refImageData = current;
+    return false;
+  }
+
+  // 背景フレームとの差分をカウント
+  const cur = current.data;
+  const ref = refImageData.data;
+  const step = 4;
+  let motionPixels = 0;
+  for (let y = 0; y < H; y += step) {
+    for (let x = 0; x < W; x += step) {
+      const i = (y * W + x) * 4;
+      const diff = (Math.abs(cur[i] - ref[i]) + Math.abs(cur[i+1] - ref[i+1]) + Math.abs(cur[i+2] - ref[i+2])) / 3;
+      if (diff > threshold) motionPixels++;
     }
   }
 
-  prevImageData = current;
-
   // 平滑化（急激な反応を抑える）
   const raw = motionPixels > motionMinPixels ? 100 : 0;
-  motionScore = motionScore * 0.72 + raw * 0.28;
+  motionScore = motionScore * 0.82 + raw * 0.18;
+  const hasMotion = motionScore > 30;
 
-  return motionScore > 25;
+  if (!hasMotion) {
+    // 安定フレームが一定数続いたら背景を更新
+    stableFrames++;
+    if (stableFrames >= STABLE_UPDATE) {
+      refImageData = current;
+      stableFrames = 0;
+    }
+  } else {
+    stableFrames = 0;
+  }
+
+  return hasMotion;
 }
 
 // ================================================================
@@ -617,7 +635,7 @@ document.getElementById('btn-fs').addEventListener('click', () => {
 });
 
 document.getElementById('btn-back').addEventListener('click', () => {
-  prevImageData = null;
+  refImageData = null; stableFrames = 0;
   ctx.clearRect(0, 0, W, H);
   document.getElementById('btn-start').disabled = false;
   document.getElementById('btn-start').textContent = '▶ 展示を開始する';
